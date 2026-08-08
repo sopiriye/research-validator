@@ -1,0 +1,83 @@
+import { useState, useEffect } from "react";
+import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
+import { GraduationCap, LayoutDashboard, FolderKanban, BarChart3, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+const AdminLayout = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (sessionStorage.getItem("iaue_admin") !== "true") {
+      navigate("/admin/login", { replace: true });
+    } else {
+      setReady(true);
+    }
+  }, [navigate]);
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("iaue_admin");
+    navigate("/admin/login");
+  };
+
+  if (!ready) return null;
+
+  const navItems = [
+    { to: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard", exact: true },
+    { to: "/admin/dashboard/projects", icon: FolderKanban, label: "Project Information" },
+    { to: "/admin/dashboard/reports", icon: BarChart3, label: "Project Reports" },
+  ];
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <header className="border-b bg-card sticky top-0 z-10">
+        <div className="container flex h-14 items-center justify-between">
+          <div className="flex items-center gap-2">
+            <GraduationCap className="h-5 w-5 text-foreground" />
+            <span className="font-semibold text-foreground text-sm sm:text-base">IAUE-ITE-PG · Admin</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Link to="/">
+              <Button variant="ghost" size="sm" className="text-muted-foreground text-xs hidden sm:inline-flex">
+                Home
+              </Button>
+            </Link>
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground text-xs">
+              <LogOut className="h-3.5 w-3.5 mr-1" />
+              Logout
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <div className="border-b bg-card">
+        <div className="container flex gap-1 py-1 overflow-x-auto">
+          {navItems.map((item) => {
+            const active = item.exact
+              ? location.pathname === item.to
+              : location.pathname.startsWith(item.to);
+            return (
+              <Link key={item.to} to={item.to}>
+                <Button
+                  variant={active ? "secondary" : "ghost"}
+                  size="sm"
+                  className={`text-xs whitespace-nowrap ${active ? "text-foreground" : "text-muted-foreground"}`}
+                >
+                  <item.icon className="h-3.5 w-3.5 mr-1.5" />
+                  {item.label}
+                </Button>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      <main className="flex-1 container py-6 sm:py-8">
+        <Outlet />
+      </main>
+    </div>
+  );
+};
+
+export default AdminLayout;
