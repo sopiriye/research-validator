@@ -8,16 +8,32 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { fetchReportSummary, type ReportSummary, type Programme } from "@/lib/api";
+import {
+  fetchReportSummary,
+  getApiErrorMessage,
+  type Programme,
+  type ReportSummary,
+} from "@/lib/api";
 
 const PROGRAMMES: Programme[] = ["MSc", "PGD", "PhD"];
 
 const ProjectReports = () => {
   const [summary, setSummary] = useState<ReportSummary | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchReportSummary().then(setSummary);
+    fetchReportSummary()
+      .then(setSummary)
+      .catch((error) => setError(getApiErrorMessage(error, "Unable to load project reports.")));
   }, []);
+
+  if (error) {
+    return (
+      <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+        {error}
+      </p>
+    );
+  }
 
   if (!summary) {
     return (

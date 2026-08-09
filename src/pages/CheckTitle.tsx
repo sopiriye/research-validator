@@ -3,18 +3,24 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, Search, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { validateTitle, type ValidationResponse, type ProjectMatch } from "@/lib/api";
+import {
+  getApiErrorMessage,
+  validateTitle,
+  type ProjectMatch,
+  type ValidationResponse,
+} from "@/lib/api";
 import { AbstractDialog, ViewAbstractButton } from "@/components/AbstractDialog";
 
 const CheckTitlePage = () => {
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ValidationResponse | null>(null);
-  const [abstractId, setAbstractId] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [abstractProject, setAbstractProject] = useState<ProjectMatch | null>(null);
   const [abstractOpen, setAbstractOpen] = useState(false);
 
-  const openAbstract = (id: string) => {
-    setAbstractId(id);
+  const openAbstract = (project: ProjectMatch) => {
+    setAbstractProject(project);
     setAbstractOpen(true);
   };
 
@@ -22,8 +28,11 @@ const CheckTitlePage = () => {
     if (!title.trim()) return;
     setLoading(true);
     setResult(null);
+    setError("");
     try {
       setResult(await validateTitle(title));
+    } catch (error) {
+      setError(getApiErrorMessage(error, "Unable to validate the project title."));
     } finally {
       setLoading(false);
     }
@@ -73,11 +82,17 @@ const CheckTitlePage = () => {
             </Button>
           </div>
 
+          {error && (
+            <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              {error}
+            </p>
+          )}
+
           {result && <ResultBlock result={result} onViewAbstract={openAbstract} />}
         </div>
       </main>
 
-      <AbstractDialog projectId={abstractId} open={abstractOpen} onOpenChange={setAbstractOpen} />
+      <AbstractDialog project={abstractProject} open={abstractOpen} onOpenChange={setAbstractOpen} />
     </div>
   );
 };
@@ -87,7 +102,7 @@ function ResultBlock({
   onViewAbstract,
 }: {
   result: ValidationResponse;
-  onViewAbstract: (id: string) => void;
+  onViewAbstract: (project: ProjectMatch) => void;
 }) {
   if (result.status === "DUPLICATE_FOUND") {
     return (
@@ -96,7 +111,7 @@ function ResultBlock({
           tone="destructive"
           icon={<XCircle className="h-5 w-5" />}
           title="Exact Match Found"
-          message="This project title already exists."
+          message={result.message}
         />
         <div className="space-y-2">
           {result.exactMatches.map((m, i) => (
@@ -107,14 +122,14 @@ function ResultBlock({
     );
   }
 
-  if (result.status === "SIMILAR_FOUND") {
+  if (result.status === "SIMILAR_MATCHES_FOUND") {
     return (
       <div className="space-y-3 fade-in-up">
         <StatusBanner
           tone="warning"
           icon={<AlertTriangle className="h-5 w-5" />}
           title="Possible Similar Match Found"
-          message="No exact duplicate was found, but similar project titles exist."
+          message={result.message}
         />
         <div className="space-y-2">
           {result.similarMatches.map((m, i) => (
@@ -131,7 +146,7 @@ function ResultBlock({
         tone="success"
         icon={<CheckCircle2 className="h-5 w-5" />}
         title="No Match Found"
-        message="No matching project title was found. You may proceed with this topic."
+        message={result.message}
       />
     </div>
   );
@@ -177,7 +192,7 @@ function MatchCard({
 }: {
   match: ProjectMatch;
   tone: Tone;
-  onViewAbstract: (id: string) => void;
+  onViewAbstract: (project: ProjectMatch) => void;
 }) {
   const c = toneClasses[tone];
   return (
@@ -191,9 +206,17 @@ function MatchCard({
           Programme: <span className="text-foreground font-medium">{match.programme}</span>
         </span>
       </div>
-      <div className="mt-3">
-        <ViewAbstractButton onClick={() => onViewAbstract(match.id)} />
-      </div>
+      {match.deterministicScore !== undefined && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Similarity score: {Math.round(match.deterministicScore * 100)}%
+          {match.classification ? ` · ${match.classification.replaceAll("_", " ")}` : ""}
+        </p>
+      )}
+      {match.hasAbstract && (
+        <div className="mt-3">
+          <ViewAbstractButton onClick={() => onViewAbstract(match)} />
+        </div>
+      )}
     </div>
   );
 }

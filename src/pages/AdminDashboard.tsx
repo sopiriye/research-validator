@@ -10,22 +10,21 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   fetchReportSummary,
+  getApiErrorMessage,
+  getCurrentAdmin,
   type ReportSummary,
   type AdminAccount,
 } from "@/lib/api";
 
 const AdminDashboard = () => {
   const [summary, setSummary] = useState<ReportSummary | null>(null);
-  const currentAccount = useMemo<AdminAccount | null>(() => {
-    try {
-      const raw = sessionStorage.getItem("iaue_admin_account");
-      return raw ? (JSON.parse(raw) as AdminAccount) : null;
-    } catch {
-      return null;
-    }
-  }, []);
+  const [error, setError] = useState("");
+  const currentAccount = useMemo<AdminAccount | null>(() => getCurrentAdmin(), []);
+
   useEffect(() => {
-    fetchReportSummary().then(setSummary);
+    fetchReportSummary()
+      .then(setSummary)
+      .catch((error) => setError(getApiErrorMessage(error, "Unable to load the dashboard summary.")));
   }, []);
 
   return (
@@ -39,13 +38,17 @@ const AdminDashboard = () => {
           {currentAccount && (
             <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium text-foreground bg-muted/40">
               <ShieldCheck className="h-3 w-3" />
-              {currentAccount.role === "super_admin" ? "Super Admin" : "Admin"}
+              {currentAccount.role === "SUPER_ADMIN" ? "Super Admin" : "Admin"}
             </span>
           )}
         </p>
       </div>
 
-      {!summary ? (
+      {error ? (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+          {error}
+        </p>
+      ) : !summary ? (
         <div className="flex items-center gap-2 text-muted-foreground text-sm">
           <Loader2 className="h-4 w-4 animate-spin-slow" /> Loading summary...
         </div>
@@ -73,7 +76,7 @@ const AdminDashboard = () => {
         />
       </div>
 
-      {currentAccount?.role === "super_admin" && (
+      {currentAccount?.role === "SUPER_ADMIN" && (
         <div className="pt-4 border-t">
           <Link
             to="/admin/dashboard/management"

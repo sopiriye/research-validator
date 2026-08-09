@@ -1,5 +1,12 @@
-import { useEffect, useState } from "react";
-import { Loader2, CheckCircle2, Search, Plus } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import {
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Plus,
+  Search,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +27,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { createProject, fetchProjects, type Programme, type Project } from "@/lib/api";
+import {
+  createProject,
+  fetchProjects,
+  getApiErrorMessage,
+  toProjectReference,
+  type Pagination,
+  type Programme,
+  type Project,
+  type ProjectReference,
+} from "@/lib/api";
 
 type FormState = {
   supervisee: string;
@@ -42,53 +58,87 @@ const empty: FormState = {
   abstract: "",
 };
 
+const pageSize = 20;
+
 const ProjectInformation = () => {
   const [form, setForm] = useState<FormState>(empty);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const [projects, setProjects] = useState<Project[]>([]);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [loadingList, setLoadingList] = useState(true);
-  const [abstractId, setAbstractId] = useState<string | null>(null);
+  const [listError, setListError] = useState("");
+  const [abstractProject, setAbstractProject] = useState<ProjectReference | null>(null);
   const [abstractOpen, setAbstractOpen] = useState(false);
 
-  const load = async (q?: string) => {
+  const load = useCallback(async (query: string, requestedPage: number) => {
     setLoadingList(true);
-    const list = await fetchProjects(q);
-    setProjects(list);
-    setLoadingList(false);
-  };
+    setListError("");
 
-  useEffect(() => {
-    load();
+    try {
+      const response = await fetchProjects({
+        page: requestedPage,
+        limit: pageSize,
+        search: query.trim() || undefined,
+      });
+      setProjects(response.records);
+      setPagination(response.pagination);
+    } catch (error) {
+      setProjects([]);
+      setPagination(null);
+      setListError(getApiErrorMessage(error, "Unable to load project records."));
+    } finally {
+      setLoadingList(false);
+    }
   }, []);
 
+  useEffect(() => {
+    const timeout = window.setTimeout(
+      () => void load(search, page),
+      search ? 300 : 0,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [load, page, search]);
+
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
-    setForm((f) => ({ ...f, [key]: value }));
-    if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }));
+    setForm((current) => ({ ...current, [key]: value }));
+    if (errors[key]) setErrors((current) => ({ ...current, [key]: undefined }));
   };
+
+  const abstractWordCount = countWords(form.abstract);
 
   const validate = () => {
-    const e: Partial<Record<keyof FormState, string>> = {};
-    if (!form.supervisee.trim()) e.supervisee = "Required";
-    if (!form.projectName.trim()) e.projectName = "Required";
-    if (!form.supervisor.trim()) e.supervisor = "Required";
-    const y = Number(form.yearOfCompletion);
-    if (!y || y < 2000 || y > 2099) e.yearOfCompletion = "Enter a valid year";
-    if (!form.programme) e.programme = "Select a programme";
-    if (!form.serialNumber.trim()) e.serialNumber = "Required";
-    if (form.abstract.trim().length < 50) e.abstract = "Enter an abstract of at least 50 characters";
-    setErrors(e);
-    return Object.keys(e).length === 0;
+    const nextErrors: Partial<Record<keyof FormState, string>> = {};
+    if (!form.supervisee.trim()) nextErrors.supervisee = "Required";
+    if (!form.projectName.trim()) nextErrors.projectName = "Required";
+    if (!form.supervisor.trim()) nextErrors.supervisor = "Required";
+
+    const year = Number(form.yearOfCompletion);
+    if (!year || year < 1900 || year > new Date().getFullYear()) {
+      nextErrors.yearOfCompletion = "Enter a valid year";
+    }
+    if (!form.programme) nextErrors.programme = "Select a programme";
+    if (!form.serialNumber.trim()) nextErrors.serialNumber = "Required";
+    if (!abstractWordCount) nextErrors.abstract = "Enter the project abstract";
+    if (abstractWordCount > 300) nextErrors.abstract = "The abstract must not exceed 300 words";
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSubmit = async (ev: React.FormEvent) => {
-    ev.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     if (!validate()) return;
+
     setSaving(true);
     setSuccess(false);
+    setSubmitError("");
+
     try {
       await createProject({
         supervisee: form.supervisee.trim(),
@@ -101,63 +151,78 @@ const ProjectInformation = () => {
       });
       setSuccess(true);
       setForm({ ...empty, yearOfCompletion: form.yearOfCompletion });
-      load(search);
-      setTimeout(() => setSuccess(false), 3500);
+      setPage(1);
+      await load(search, 1);
+      window.setTimeout(() => setSuccess(false), 3500);
+    } catch (error) {
+      setSubmitError(getApiErrorMessage(error, "Unable to save the project information."));
     } finally {
       setSaving(false);
     }
   };
 
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  const openAbstract = (project: Project) => {
+    setAbstractProject(toProjectReference(project));
+    setAbstractOpen(true);
+  };
+
+  const totalItems = pagination?.totalItems ?? 0;
+
   return (
     <div className="space-y-10">
       <section>
-        <div className="space-y-1 mb-5">
+        <div className="mb-5 space-y-1">
           <h2 className="text-lg font-semibold text-foreground">Add Project Information</h2>
           <p className="text-sm text-muted-foreground">
             Enter full project details. All fields are required.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
+        <form onSubmit={handleSubmit} className="grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Supervisee" error={errors.supervisee}>
             <Input
               value={form.supervisee}
-              onChange={(e) => update("supervisee", e.target.value)}
+              onChange={(event) => update("supervisee", event.target.value)}
               placeholder="John Doe"
-              maxLength={100}
+              maxLength={255}
             />
           </Field>
           <Field label="Supervisor" error={errors.supervisor}>
             <Input
               value={form.supervisor}
-              onChange={(e) => update("supervisor", e.target.value)}
+              onChange={(event) => update("supervisor", event.target.value)}
               placeholder="Dr. Jane Smith"
-              maxLength={100}
+              maxLength={255}
             />
           </Field>
           <div className="sm:col-span-2">
             <Field label="Project Name" error={errors.projectName}>
               <Input
                 value={form.projectName}
-                onChange={(e) => update("projectName", e.target.value)}
+                onChange={(event) => update("projectName", event.target.value)}
                 placeholder="Assessment of ICT Usage in Teaching and Learning"
-                maxLength={250}
+                maxLength={1000}
               />
             </Field>
           </div>
           <Field label="Year of Completion" error={errors.yearOfCompletion}>
             <Input
               type="number"
-              min="2000"
-              max="2099"
+              min="1900"
+              max={new Date().getFullYear()}
               value={form.yearOfCompletion}
-              onChange={(e) => update("yearOfCompletion", e.target.value)}
+              onChange={(event) => update("yearOfCompletion", event.target.value)}
             />
           </Field>
           <Field label="Programme" error={errors.programme}>
             <Select
               value={form.programme || undefined}
-              onValueChange={(v) => update("programme", v as Programme)}
+              onValueChange={(value) => update("programme", value as Programme)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select programme" />
@@ -173,40 +238,50 @@ const ProjectInformation = () => {
             <Field label="Serial Number" error={errors.serialNumber}>
               <Input
                 value={form.serialNumber}
-                onChange={(e) => update("serialNumber", e.target.value)}
+                onChange={(event) => update("serialNumber", event.target.value)}
                 placeholder="ITE-MSC-2024-001"
-                maxLength={50}
+                maxLength={100}
               />
             </Field>
           </div>
-
           <div className="sm:col-span-2">
             <Field label="Abstract" error={errors.abstract}>
               <Textarea
                 value={form.abstract}
-                onChange={(e) => update("abstract", e.target.value)}
+                onChange={(event) => update("abstract", event.target.value)}
                 placeholder="Paste or type the full project abstract here..."
                 rows={7}
-                maxLength={5000}
                 className="resize-y"
               />
               <p className="text-xs text-muted-foreground">
-                {form.abstract.trim().length}/5000 characters. Shown to public users and admins via the
-                abstract viewer.
+                {abstractWordCount}/300 words. The abstract is available to public users and admins through
+                the abstract viewer.
               </p>
             </Field>
           </div>
 
+          {submitError && (
+            <div className="sm:col-span-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              {submitError}
+            </div>
+          )}
           {success && (
-            <div className="sm:col-span-2 rounded-lg border border-success/30 bg-success/5 p-3 flex items-center gap-2 text-sm">
+            <div className="sm:col-span-2 flex items-center gap-2 rounded-lg border border-success/30 bg-success/5 p-3 text-sm">
               <CheckCircle2 className="h-4 w-4 text-success" />
               <span className="text-foreground">Project information saved successfully.</span>
             </div>
           )}
-
           <div className="sm:col-span-2">
-            <Button type="submit" className="h-10 active:scale-[0.97] transition-transform" disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin-slow" /> : <Plus className="h-4 w-4 mr-2" />}
+            <Button
+              type="submit"
+              className="h-10 transition-transform active:scale-[0.97]"
+              disabled={saving}
+            >
+              {saving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin-slow" />
+              ) : (
+                <Plus className="mr-2 h-4 w-4" />
+              )}
               {saving ? "Saving..." : "Save Project Information"}
             </Button>
           </div>
@@ -214,28 +289,33 @@ const ProjectInformation = () => {
       </section>
 
       <section>
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1">
             <h2 className="text-lg font-semibold text-foreground">Search Project Information</h2>
             <p className="text-sm text-muted-foreground">
-              {loadingList ? "Loading..." : `${projects.length} record${projects.length === 1 ? "" : "s"}`}
+              {loadingList
+                ? "Loading..."
+                : `${totalItems} record${totalItems === 1 ? "" : "s"}`}
             </p>
           </div>
           <div className="relative w-full sm:w-72">
-            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                load(e.target.value);
-              }}
-              placeholder="Search title, supervisor, serial..."
-              className="pl-9 h-10"
+              onChange={(event) => handleSearchChange(event.target.value)}
+              placeholder="Search title, supervisee, supervisor, or serial..."
+              className="h-10 pl-9"
             />
           </div>
         </div>
 
-        <div className="rounded-lg border bg-card overflow-hidden">
+        {listError && (
+          <p className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+            {listError}
+          </p>
+        )}
+
+        <div className="overflow-hidden rounded-lg border bg-card">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -252,33 +332,32 @@ const ProjectInformation = () => {
               <TableBody>
                 {projects.length === 0 && !loadingList ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
+                    <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                       No records found.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  projects.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-medium text-sm">{p.projectName}</TableCell>
-                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                        {p.supervisee}
+                  projects.map((project) => (
+                    <TableRow key={project.id}>
+                      <TableCell className="text-sm font-medium">{project.projectName}</TableCell>
+                      <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
+                        {project.supervisee}
                       </TableCell>
-                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                        {p.supervisor}
+                      <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
+                        {project.supervisor}
                       </TableCell>
-                      <TableCell className="text-sm">{p.programme}</TableCell>
-                      <TableCell className="text-right tabular-nums text-sm">{p.yearOfCompletion}</TableCell>
-                      <TableCell className="hidden lg:table-cell text-xs text-muted-foreground tabular-nums">
-                        {p.serialNumber}
+                      <TableCell className="text-sm">{project.programme}</TableCell>
+                      <TableCell className="text-right text-sm tabular-nums">
+                        {project.yearOfCompletion}
+                      </TableCell>
+                      <TableCell className="hidden text-xs text-muted-foreground tabular-nums lg:table-cell">
+                        {project.serialNumber}
                       </TableCell>
                       <TableCell className="text-right">
                         <ViewAbstractButton
                           compact
                           label="View abstract"
-                          onClick={() => {
-                            setAbstractId(p.id);
-                            setAbstractOpen(true);
-                          }}
+                          onClick={() => openAbstract(project)}
                         />
                       </TableCell>
                     </TableRow>
@@ -288,9 +367,41 @@ const ProjectInformation = () => {
             </Table>
           </div>
         </div>
+
+        {pagination && pagination.totalPages > 1 && (
+          <div className="mt-4 flex items-center justify-end gap-3 text-sm text-muted-foreground">
+            <span>
+              Page {pagination.page} of {pagination.totalPages}
+            </span>
+            <div className="flex gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                aria-label="Previous page"
+                disabled={loadingList || pagination.page <= 1}
+                onClick={() => setPage((current) => current - 1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                aria-label="Next page"
+                disabled={loadingList || pagination.page >= pagination.totalPages}
+                onClick={() => setPage((current) => current + 1)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </section>
 
-      <AbstractDialog projectId={abstractId} open={abstractOpen} onOpenChange={setAbstractOpen} />
+      <AbstractDialog project={abstractProject} open={abstractOpen} onOpenChange={setAbstractOpen} />
     </div>
   );
 };
@@ -311,6 +422,10 @@ function Field({
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
+}
+
+function countWords(value: string): number {
+  return value.trim() ? value.trim().split(/\s+/).length : 0;
 }
 
 export default ProjectInformation;

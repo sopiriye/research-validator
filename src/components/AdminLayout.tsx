@@ -2,6 +2,13 @@ import { useState, useEffect } from "react";
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { GraduationCap, LayoutDashboard, FolderKanban, BarChart3, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  adminLogout,
+  authExpiredEvent,
+  fetchCurrentAdmin,
+  getAccessToken,
+  getCurrentAdmin,
+} from "@/lib/api";
 
 const AdminLayout = () => {
   const navigate = useNavigate();
@@ -9,16 +16,45 @@ const AdminLayout = () => {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (sessionStorage.getItem("iaue_admin") !== "true") {
-      navigate("/admin/login", { replace: true });
-    } else {
-      setReady(true);
-    }
+    let active = true;
+
+    const redirectToLogin = () => {
+      if (active) {
+        setReady(false);
+        navigate("/admin/login", { replace: true });
+      }
+    };
+
+    const verifySession = async () => {
+      if (!getAccessToken() || !getCurrentAdmin()) {
+        redirectToLogin();
+        return;
+      }
+
+      try {
+        await fetchCurrentAdmin();
+        if (active) setReady(true);
+      } catch {
+        redirectToLogin();
+      }
+    };
+
+    void verifySession();
+    window.addEventListener(authExpiredEvent, redirectToLogin);
+
+    return () => {
+      active = false;
+      window.removeEventListener(authExpiredEvent, redirectToLogin);
+    };
   }, [navigate]);
 
-  const handleLogout = () => {
-    sessionStorage.removeItem("iaue_admin");
-    navigate("/admin/login");
+  const handleLogout = async () => {
+    try {
+      await adminLogout();
+    } catch {
+      // The local session is cleared even when an expired token prevents logout.
+    }
+    navigate("/admin/login", { replace: true });
   };
 
   if (!ready) return null;
@@ -43,7 +79,7 @@ const AdminLayout = () => {
                 Home
               </Button>
             </Link>
-            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground text-xs">
+            <Button variant="ghost" size="sm" onClick={() => void handleLogout()} className="text-muted-foreground text-xs">
               <LogOut className="h-3.5 w-3.5 mr-1" />
               Logout
             </Button>

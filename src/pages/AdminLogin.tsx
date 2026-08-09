@@ -4,7 +4,7 @@ import { BookOpen, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { adminLogin } from "@/lib/api";
+import { adminLogin, getApiErrorMessage } from "@/lib/api";
 
 const AdminLoginPage = () => {
   const navigate = useNavigate();
@@ -18,12 +18,10 @@ const AdminLoginPage = () => {
     setError("");
     setLoading(true);
     try {
-      const { account } = await adminLogin(email, password);
-      sessionStorage.setItem("iaue_admin", "true");
-      sessionStorage.setItem("iaue_admin_account", JSON.stringify(account));
+      await adminLogin(email, password);
       navigate("/admin/dashboard");
-    } catch {
-      setError("Invalid email or password");
+    } catch (error) {
+      setError(getApiErrorMessage(error, "Unable to sign in. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -73,11 +71,8 @@ const AdminLoginPage = () => {
             {loading ? "Signing in..." : "Sign In"}
           </Button>
         </form>
-
         <p className="text-center text-xs text-muted-foreground">
-          Super Admin: admin@iaue.edu.ng / admin123
-          <br />
-          Admin: staff@iaue.edu.ng / staff123
+          Use the administrator account assigned to you by the department.
         </p>
       </div>
     </div>

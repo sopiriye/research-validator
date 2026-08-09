@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Eye } from "lucide-react";
+import { Eye, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -8,64 +8,83 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { fetchProjectAbstract, type AbstractResponse } from "@/lib/api";
+import {
+  fetchProjectAbstract,
+  type AbstractResponse,
+  type ProjectReference,
+} from "@/lib/api";
 
 export function AbstractDialog({
-  projectId,
+  project,
   open,
   onOpenChange,
 }: {
-  projectId: string | null;
+  project: ProjectReference | null;
   open: boolean;
-  onOpenChange: (v: boolean) => void;
+  onOpenChange: (open: boolean) => void;
 }) {
   const [data, setData] = useState<AbstractResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!open || !projectId) return;
+    if (!open || !project) return;
+
     let active = true;
     setLoading(true);
     setError(null);
     setData(null);
-    fetchProjectAbstract(projectId)
-      .then((d) => active && setData(d))
-      .catch((e) => active && setError(e instanceof Error ? e.message : "Failed to load abstract."))
+
+    fetchProjectAbstract(project.id)
+      .then((response) => active && setData(response))
+      .catch((error) => {
+        if (active) {
+          setError(
+            error instanceof Error ? error.message : "Failed to load the project abstract.",
+          );
+        }
+      })
       .finally(() => active && setLoading(false));
+
     return () => {
       active = false;
     };
-  }, [open, projectId]);
+  }, [open, project]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-base leading-snug pr-6">
-            {data?.projectTitle ?? "Project Abstract"}
+            {project?.projectTitle ?? "Project Abstract"}
           </DialogTitle>
           <DialogDescription>
-            {data
-              ? `Year of Completion: ${data.yearOfCompletion} · Programme: ${data.programme}`
+            {project
+              ? `Year of Completion: ${project.yearOfCompletion} · Programme: ${project.programme}`
               : "Loading project abstract..."}
           </DialogDescription>
         </DialogHeader>
 
         {loading && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
+          <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin-slow" /> Fetching abstract...
           </div>
         )}
-        {error && <p className="text-sm text-destructive py-4">{error}</p>}
-        {data && !loading && (
+        {error && <p className="py-4 text-sm text-destructive">{error}</p>}
+        {data && !loading && data.abstract && (
           <div className="max-h-[55vh] overflow-y-auto pr-1">
-            {data.abstract.split("\n\n").map((para, i) => (
-              <p key={i} className="text-sm text-muted-foreground leading-relaxed mb-3 whitespace-pre-line">
-                {para}
+            {data.abstract.split("\n\n").map((paragraph, index) => (
+              <p
+                key={index}
+                className="mb-3 whitespace-pre-line text-sm leading-relaxed text-muted-foreground"
+              >
+                {paragraph}
               </p>
             ))}
           </div>
+        )}
+        {data && !loading && !data.abstract && (
+          <p className="py-4 text-sm text-muted-foreground">{data.message}</p>
         )}
       </DialogContent>
     </Dialog>
@@ -95,6 +114,7 @@ export function ViewAbstractButton({
       </Button>
     );
   }
+
   return (
     <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={onClick}>
       <Eye className="h-3.5 w-3.5" />

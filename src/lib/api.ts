@@ -1,7 +1,48 @@
-// Mock API for IAUE-ITE-PG Research Project Validator
-// Structured to mirror the future NestJS backend contract.
+import axios, { type AxiosError } from "axios";
+
+const defaultApiBaseUrl = "http://localhost:3000";
+
+export const apiBaseUrl = (
+  import.meta.env.VITE_API_BASE_URL ?? defaultApiBaseUrl
+).replace(/\/+$/, "");
+
+const accessTokenStorageKey = "iaue_admin_access_token";
+const adminStorageKey = "iaue_admin_account";
+export const authExpiredEvent = "iaue-auth-expired";
 
 export type Programme = "MSc" | "PGD" | "PhD";
+export type AdminRole = "ADMIN" | "SUPER_ADMIN";
+export type AdminStatus = "ACTIVE" | "DISABLED" | "SUSPENDED";
+
+export interface AdminAccount {
+  id: string;
+  fullName: string;
+  email: string;
+  role: AdminRole;
+  status?: AdminStatus;
+  createdAt?: string;
+  updatedAt?: string;
+  lastLoginAt?: string | null;
+}
+
+export interface ProjectReference {
+  id: string;
+  projectTitle: string;
+  yearOfCompletion: number;
+  programme: Programme;
+  hasAbstract?: boolean;
+}
+
+export interface ProjectMatch extends ProjectReference {
+  matchType: "EXACT" | "SIMILAR";
+  algorithmScores?: {
+    levenshtein: number;
+    trigram: number;
+    tokenSimilarity: number;
+  };
+  deterministicScore?: number;
+  classification?: "HIGH_SIMILARITY" | "REVIEW" | "WEAK_MATCH";
+}
 
 export interface Project {
   id: string;
@@ -11,96 +52,34 @@ export interface Project {
   yearOfCompletion: number;
   programme: Programme;
   serialNumber: string;
-  abstract: string;
+  abstract?: string;
+  normalizedProjectName?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-export interface ProjectMatch {
-  id: string;
-  projectTitle: string;
-  yearOfCompletion: number;
-  programme: Programme;
+export interface ProjectListResponse {
+  records: Project[];
+  pagination: Pagination;
 }
 
-export type ValidationStatus = "DUPLICATE_FOUND" | "SIMILAR_FOUND" | "NO_MATCH";
-
-export interface ValidationResponse {
-  status: ValidationStatus;
-  exactMatches: ProjectMatch[];
-  similarMatches: ProjectMatch[];
+export interface Pagination {
+  page: number;
+  limit: number;
+  totalItems: number;
+  totalPages: number;
 }
 
-const seedAbstract = (title: string, programme: Programme, year: number) =>
-  `This ${programme} research, completed in ${year}, titled "${title}", investigates the problem within the context of Ignatius Ajuru University of Education, ITE Department. The study adopts a mixed-method approach combining a structured survey of staff and students with an iterative system design process. Data collected were analysed using descriptive statistics, while the prototype was evaluated against defined functional and non-functional requirements.\n\nFindings indicate measurable improvements in accuracy, turnaround time and user satisfaction compared with existing manual practice. The study concludes with recommendations for departmental adoption, integration with existing records, and suggestions for further research on scalability and security.`;
-
-const rawProjects: Omit<Project, "abstract">[] = [
-  { id: "1", supervisee: "John Doe", projectName: "Assessment of ICT Usage in Teaching and Learning", supervisor: "Dr. Jane Smith", yearOfCompletion: 2023, programme: "MSc", serialNumber: "ITE-MSC-2023-001" },
-  { id: "2", supervisee: "Mary Johnson", projectName: "ICT Usage in Classroom Learning", supervisor: "Prof. Ada Okafor", yearOfCompletion: 2022, programme: "PGD", serialNumber: "ITE-PGD-2022-014" },
-  { id: "3", supervisee: "Samuel Green", projectName: "Impact of ICT on Teaching and Learning", supervisor: "Dr. Emeka Obi", yearOfCompletion: 2024, programme: "MSc", serialNumber: "ITE-MSC-2024-007" },
-  { id: "4", supervisee: "Grace Peters", projectName: "Design and Implementation of a Student Result Management System", supervisor: "Dr. Jane Smith", yearOfCompletion: 2023, programme: "MSc", serialNumber: "ITE-MSC-2023-018" },
-  { id: "5", supervisee: "Peter Nwosu", projectName: "Development of an Online Voting System for Student Union Elections", supervisor: "Prof. Ada Okafor", yearOfCompletion: 2022, programme: "PhD", serialNumber: "ITE-PHD-2022-003" },
-  { id: "6", supervisee: "Ruth Bassey", projectName: "A Web-Based Library Management System for IAUE", supervisor: "Dr. Emeka Obi", yearOfCompletion: 2021, programme: "PGD", serialNumber: "ITE-PGD-2021-021" },
-  { id: "7", supervisee: "Chika Umeh", projectName: "Implementation of a Computerized Attendance Tracking System", supervisor: "Dr. Jane Smith", yearOfCompletion: 2022, programme: "MSc", serialNumber: "ITE-MSC-2022-032" },
-  { id: "8", supervisee: "David Iyke", projectName: "Design of an E-Learning Platform for Distance Education", supervisor: "Prof. Ada Okafor", yearOfCompletion: 2021, programme: "MSc", serialNumber: "ITE-MSC-2021-011" },
-  { id: "9", supervisee: "Blessing Ade", projectName: "Development of a School Fees Payment and Verification System", supervisor: "Dr. Emeka Obi", yearOfCompletion: 2021, programme: "PhD", serialNumber: "ITE-PHD-2021-002" },
-  { id: "10", supervisee: "Kelvin Otu", projectName: "A Computerized Student Registration and Course Allocation System", supervisor: "Dr. Jane Smith", yearOfCompletion: 2020, programme: "PGD", serialNumber: "ITE-PGD-2020-009" },
-  { id: "11", supervisee: "Ada Nnadi", projectName: "Design and Implementation of an Online Examination System", supervisor: "Prof. Ada Okafor", yearOfCompletion: 2020, programme: "MSc", serialNumber: "ITE-MSC-2020-024" },
-  { id: "12", supervisee: "Ifeanyi Okoro", projectName: "Development of a Hostel Room Allocation Management System", supervisor: "Dr. Emeka Obi", yearOfCompletion: 2024, programme: "MSc", serialNumber: "ITE-MSC-2024-015" },
-  { id: "13", supervisee: "Rose Uche", projectName: "Digital Notice Board System for University Departments", supervisor: "Dr. Jane Smith", yearOfCompletion: 2024, programme: "PGD", serialNumber: "ITE-PGD-2024-006" },
-  { id: "14", supervisee: "Michael Eze", projectName: "Cloud-Based Assessment Tool for Higher Institutions", supervisor: "Prof. Ada Okafor", yearOfCompletion: 2023, programme: "PhD", serialNumber: "ITE-PHD-2023-001" },
-];
-
-const mockProjects: Project[] = rawProjects.map((p) => ({
-  ...p,
-  abstract: seedAbstract(p.projectName, p.programme, p.yearOfCompletion),
-}));
-
-const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
-const tokenize = (s: string) =>
-  new Set(
-    normalize(s)
-      .replace(/[^a-z0-9 ]/g, "")
-      .split(" ")
-      .filter((w) => w.length > 3),
-  );
-
-function similarity(a: string, b: string): number {
-  const ta = tokenize(a);
-  const tb = tokenize(b);
-  if (!ta.size || !tb.size) return 0;
-  let inter = 0;
-  ta.forEach((t) => tb.has(t) && inter++);
-  const union = new Set([...ta, ...tb]).size;
-  return inter / union;
+export interface ProjectQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  programme?: Programme;
+  yearOfCompletion?: number;
+  supervisor?: string;
+  serialNumber?: string;
 }
 
-// POST /api/projects/validate
-export async function validateTitle(projectTitle: string): Promise<ValidationResponse> {
-  await new Promise((r) => setTimeout(r, 700 + Math.random() * 400));
-  const target = normalize(projectTitle);
-  const exactMatches: ProjectMatch[] = [];
-  const similarMatches: ProjectMatch[] = [];
-
-  for (const p of mockProjects) {
-    const match: ProjectMatch = {
-      id: p.id,
-      projectTitle: p.projectName,
-      yearOfCompletion: p.yearOfCompletion,
-      programme: p.programme,
-    };
-    if (normalize(p.projectName) === target) {
-      exactMatches.push(match);
-    } else if (similarity(p.projectName, projectTitle) >= 0.35) {
-      similarMatches.push(match);
-    }
-  }
-
-  const status: ValidationStatus =
-    exactMatches.length > 0 ? "DUPLICATE_FOUND" : similarMatches.length > 0 ? "SIMILAR_FOUND" : "NO_MATCH";
-
-  return { status, exactMatches, similarMatches: similarMatches.slice(0, 5) };
-}
-
-// POST /api/admin/projects
 export interface CreateProjectPayload {
   supervisee: string;
   projectName: string;
@@ -111,168 +90,323 @@ export interface CreateProjectPayload {
   abstract: string;
 }
 
-export async function createProject(payload: CreateProjectPayload): Promise<Project> {
-  await new Promise((r) => setTimeout(r, 600));
-  const project: Project = { id: String(mockProjects.length + 1), ...payload };
-  mockProjects.push(project);
-  return project;
+export interface CreateAdminPayload {
+  fullName: string;
+  email: string;
+  password: string;
+  role: AdminRole;
 }
 
-// GET /api/projects/:id/abstract  (public + admin)
+export interface AdminQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  role?: AdminRole;
+  status?: AdminStatus;
+}
+
+export interface AdminListResponse {
+  admins: AdminAccount[];
+  pagination: Pagination;
+}
+
+export type ValidationStatus =
+  | "DUPLICATE_FOUND"
+  | "SIMILAR_MATCHES_FOUND"
+  | "NO_MATCH_FOUND";
+
+export interface ValidationResponse {
+  status: ValidationStatus;
+  message: string;
+  query: string;
+  normalizedQuery: string;
+  exactMatches: ProjectMatch[];
+  similarMatches: ProjectMatch[];
+}
+
 export interface AbstractResponse {
-  id: string;
-  projectTitle: string;
-  yearOfCompletion: number;
-  programme: Programme;
-  abstract: string;
+  projectId: string;
+  abstract: string | null;
+  message: string;
 }
 
-export async function fetchProjectAbstract(id: string): Promise<AbstractResponse> {
-  await new Promise((r) => setTimeout(r, 500));
-  const p = mockProjects.find((x) => x.id === id);
-  if (!p) throw new Error("Abstract not found for this project.");
-  return {
-    id: p.id,
-    projectTitle: p.projectName,
-    yearOfCompletion: p.yearOfCompletion,
-    programme: p.programme,
-    abstract: p.abstract,
-  };
-}
-
-// GET /api/admin/projects
-export async function fetchProjects(search?: string): Promise<Project[]> {
-  await new Promise((r) => setTimeout(r, 400));
-  const q = search ? normalize(search) : "";
-  const list = q
-    ? mockProjects.filter(
-        (p) =>
-          normalize(p.projectName).includes(q) ||
-          normalize(p.supervisee).includes(q) ||
-          normalize(p.supervisor).includes(q) ||
-          normalize(p.serialNumber).includes(q),
-      )
-    : [...mockProjects];
-  return list.sort((a, b) => b.yearOfCompletion - a.yearOfCompletion);
-}
-
-// GET /api/admin/reports/summary
 export interface ReportSummary {
   totalProjects: number;
   projectsByYear: { year: number; total: number }[];
   projectsByProgramme: { programme: Programme; total: number }[];
-  projectsByProgrammeAndYear: { year: number; programme: Programme; total: number }[];
+  projectsByProgrammeAndYear: {
+    year: number;
+    programme: Programme;
+    total: number;
+  }[];
 }
 
-export async function fetchReportSummary(): Promise<ReportSummary> {
-  await new Promise((r) => setTimeout(r, 500));
+interface ApiEnvelope<T> {
+  success: boolean;
+  message?: string;
+  data: T;
+}
 
-  const byYear = new Map<number, number>();
-  const byProg = new Map<Programme, number>();
-  const byBoth = new Map<string, number>();
+interface ApiErrorEnvelope {
+  message?: string;
+  errors?: string[];
+}
 
-  for (const p of mockProjects) {
-    byYear.set(p.yearOfCompletion, (byYear.get(p.yearOfCompletion) ?? 0) + 1);
-    byProg.set(p.programme, (byProg.get(p.programme) ?? 0) + 1);
-    const key = `${p.yearOfCompletion}|${p.programme}`;
-    byBoth.set(key, (byBoth.get(key) ?? 0) + 1);
+interface ValidationData {
+  query: string;
+  normalizedQuery: string;
+  exactMatches: ProjectMatch[];
+  similarMatches: ProjectMatch[];
+}
+
+interface ValidationEnvelope extends ApiEnvelope<ValidationData> {
+  status: ValidationStatus;
+  message: string;
+}
+
+interface BackendReportSummary {
+  totalProjects: number;
+  totalPGDProjects: number;
+  totalMScProjects: number;
+  totalPhDProjects: number;
+}
+
+interface BackendYearTotal {
+  yearOfCompletion: number;
+  totalProjects: number;
+}
+
+interface BackendProgrammeTotal {
+  programme: Programme;
+  totalProjects: number;
+}
+
+interface BackendProgrammeYearTotal extends BackendProgrammeTotal {
+  yearOfCompletion: number;
+}
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status?: number,
+    readonly errors?: string[],
+  ) {
+    super(message);
+    this.name = "ApiError";
   }
+}
 
+const api = axios.create({
+  baseURL: apiBaseUrl,
+  headers: { "Content-Type": "application/json" },
+  timeout: 15_000,
+});
+
+api.interceptors.request.use((config) => {
+  const accessToken = getAccessToken();
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`;
+  }
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError<ApiErrorEnvelope>) => {
+    const status = error.response?.status;
+    const payload = error.response?.data;
+    const message =
+      payload?.message ??
+      (error.code === "ECONNABORTED"
+        ? "The request timed out. Please try again."
+        : error.message || "Unable to reach the server. Please try again.");
+
+    if (status === 401) {
+      clearAdminSession();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event(authExpiredEvent));
+      }
+    }
+
+    return Promise.reject(new ApiError(message, status, payload?.errors));
+  },
+);
+
+export function getAccessToken(): string | null {
+  return typeof window === "undefined"
+    ? null
+    : sessionStorage.getItem(accessTokenStorageKey);
+}
+
+export function getCurrentAdmin(): AdminAccount | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = sessionStorage.getItem(adminStorageKey);
+    return raw ? (JSON.parse(raw) as AdminAccount) : null;
+  } catch {
+    clearAdminSession();
+    return null;
+  }
+}
+
+export function setAdminSession(accessToken: string, admin: AdminAccount): void {
+  sessionStorage.setItem(accessTokenStorageKey, accessToken);
+  sessionStorage.setItem(adminStorageKey, JSON.stringify(admin));
+}
+
+export function clearAdminSession(): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(accessTokenStorageKey);
+  sessionStorage.removeItem(adminStorageKey);
+}
+
+export function toProjectReference(project: Project): ProjectReference {
   return {
-    totalProjects: mockProjects.length,
-    projectsByYear: [...byYear.entries()]
-      .map(([year, total]) => ({ year, total }))
-      .sort((a, b) => a.year - b.year),
-    projectsByProgramme: (["MSc", "PGD", "PhD"] as Programme[]).map((programme) => ({
-      programme,
-      total: byProg.get(programme) ?? 0,
-    })),
-    projectsByProgrammeAndYear: [...byBoth.entries()]
-      .map(([key, total]) => {
-        const [year, programme] = key.split("|");
-        return { year: Number(year), programme: programme as Programme, total };
-      })
-      .sort((a, b) => a.year - b.year),
+    id: project.id,
+    projectTitle: project.projectName,
+    yearOfCompletion: project.yearOfCompletion,
+    programme: project.programme,
+    hasAbstract: true,
   };
 }
 
-// POST /api/admin/login
-export type AdminRole = "super_admin" | "admin";
-
-export interface AdminAccount {
-  id: string;
-  email: string;
-  fullName: string;
-  role: AdminRole;
-  createdAt: string;
+export function getApiErrorMessage(
+  error: unknown,
+  fallback = "Something went wrong. Please try again.",
+): string {
+  return error instanceof Error && error.message ? error.message : fallback;
 }
 
-// In-memory admin store (mock). Replace with NestJS /api/admins.
-const mockAdmins: (AdminAccount & { password: string })[] = [
-  {
-    id: "1",
-    email: "admin@iaue.edu.ng",
-    fullName: "Super Admin",
-    role: "super_admin",
-    password: "admin123",
-    createdAt: new Date("2025-01-10").toISOString(),
-  },
-  {
-    id: "2",
-    email: "staff@iaue.edu.ng",
-    fullName: "Department Staff",
-    role: "admin",
-    password: "staff123",
-    createdAt: new Date("2025-03-02").toISOString(),
-  },
-];
+export async function validateTitle(
+  projectTitle: string,
+): Promise<ValidationResponse> {
+  const response = await api.post<ValidationEnvelope>("/projects/validate", {
+    projectTitle,
+  });
+  const { data } = response.data;
+
+  return {
+    status: response.data.status,
+    message: response.data.message,
+    query: data.query,
+    normalizedQuery: data.normalizedQuery,
+    exactMatches: data.exactMatches,
+    similarMatches: data.similarMatches,
+  };
+}
+
+export async function fetchProjectAbstract(
+  id: string,
+): Promise<AbstractResponse> {
+  const response = await api.get<ApiEnvelope<{ projectId: string; abstract: string | null }>>(
+    `/projects/${id}/abstract`,
+  );
+
+  return {
+    ...response.data.data,
+    message: response.data.message ?? "Project abstract retrieved successfully.",
+  };
+}
 
 export async function adminLogin(
   email: string,
   password: string,
-): Promise<{ success: boolean; account: AdminAccount }> {
-  await new Promise((r) => setTimeout(r, 600));
-  const found = mockAdmins.find(
-    (a) => a.email.toLowerCase() === email.trim().toLowerCase() && a.password === password,
+): Promise<AdminAccount> {
+  const response = await api.post<
+    ApiEnvelope<{ accessToken: string; admin: AdminAccount }>
+  >("/auth-admin/login", { email, password });
+  const { accessToken, admin } = response.data.data;
+  setAdminSession(accessToken, admin);
+  return admin;
+}
+
+export async function fetchCurrentAdmin(): Promise<AdminAccount> {
+  const response = await api.get<ApiEnvelope<AdminAccount>>("/auth-admin/me");
+  const accessToken = getAccessToken();
+  if (accessToken) {
+    setAdminSession(accessToken, response.data.data);
+  }
+  return response.data.data;
+}
+
+export async function adminLogout(): Promise<void> {
+  try {
+    await api.post("/auth-admin/logout");
+  } finally {
+    clearAdminSession();
+  }
+}
+
+export async function createProject(
+  payload: CreateProjectPayload,
+): Promise<Project> {
+  const response = await api.post<ApiEnvelope<Project>>("/admin/projects", payload);
+  return response.data.data;
+}
+
+export async function fetchProjects(
+  query: ProjectQuery = {},
+): Promise<ProjectListResponse> {
+  const response = await api.get<ApiEnvelope<ProjectListResponse>>(
+    "/admin/projects",
+    { params: query },
   );
-  if (!found) throw new Error("Invalid email or password");
-  const { password: _pw, ...account } = found;
-  return { success: true, account };
+  return response.data.data;
 }
 
-// GET /api/admins
-export async function fetchAdmins(): Promise<AdminAccount[]> {
-  await new Promise((r) => setTimeout(r, 300));
-  return mockAdmins.map(({ password: _pw, ...rest }) => rest);
-}
+export async function fetchReportSummary(): Promise<ReportSummary> {
+  const [summaryResponse, byYearResponse, byProgrammeResponse, byProgrammeYearResponse] =
+    await Promise.all([
+      api.get<ApiEnvelope<BackendReportSummary>>("/admin/reports/summary"),
+      api.get<ApiEnvelope<BackendYearTotal[]>>("/admin/reports/projects-by-year"),
+      api.get<ApiEnvelope<BackendProgrammeTotal[]>>(
+        "/admin/reports/projects-by-programme",
+      ),
+      api.get<ApiEnvelope<BackendProgrammeYearTotal[]>>(
+        "/admin/reports/projects-by-programme-year",
+      ),
+    ]);
 
-// POST /api/admins   — server MUST also re-check role
-export interface CreateAdminPayload {
-  requesterRole: AdminRole;
-  fullName: string;
-  email: string;
-  password: string;
-  role?: AdminRole;
-}
+  const summary = summaryResponse.data.data;
+  const programmeTotals = byProgrammeResponse.data.data;
 
-export async function createAdmin(payload: CreateAdminPayload): Promise<AdminAccount> {
-  await new Promise((r) => setTimeout(r, 500));
-  if (payload.requesterRole !== "super_admin") {
-    throw new Error("You are not allowed to create another admin. Only the Super Admin can add new admins.");
-  }
-  const email = payload.email.trim().toLowerCase();
-  if (mockAdmins.some((a) => a.email.toLowerCase() === email)) {
-    throw new Error("An admin with this email already exists.");
-  }
-  const created: AdminAccount & { password: string } = {
-    id: String(mockAdmins.length + 1),
-    email,
-    fullName: payload.fullName.trim(),
-    role: payload.role === "super_admin" ? "super_admin" : "admin",
-    password: payload.password,
-    createdAt: new Date().toISOString(),
+  return {
+    totalProjects: summary.totalProjects,
+    projectsByYear: byYearResponse.data.data.map((item) => ({
+      year: item.yearOfCompletion,
+      total: item.totalProjects,
+    })),
+    projectsByProgramme: programmeTotals.map((item) => ({
+      programme: item.programme,
+      total: item.totalProjects,
+    })),
+    projectsByProgrammeAndYear: byProgrammeYearResponse.data.data.map(
+      (item) => ({
+        year: item.yearOfCompletion,
+        programme: item.programme,
+        total: item.totalProjects,
+      }),
+    ),
   };
-  mockAdmins.push(created);
-  const { password: _pw, ...rest } = created;
-  return rest;
+}
+
+export async function fetchAdmins(
+  query: AdminQuery = {},
+): Promise<AdminListResponse> {
+  const response = await api.get<ApiEnvelope<AdminListResponse>>(
+    "/admin-management/admins",
+    { params: query },
+  );
+  return response.data.data;
+}
+
+export async function createAdmin(
+  payload: CreateAdminPayload,
+): Promise<AdminAccount> {
+  const response = await api.post<ApiEnvelope<AdminAccount>>(
+    "/admin-management/admins",
+    payload,
+  );
+  return response.data.data;
 }

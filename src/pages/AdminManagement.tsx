@@ -16,28 +16,22 @@ import { Switch } from "@/components/ui/switch";
 import {
   fetchAdmins,
   createAdmin,
+  getApiErrorMessage,
+  getCurrentAdmin,
   type AdminAccount,
   type AdminRole,
 } from "@/lib/api";
 
 const AdminManagementPage = () => {
-  const currentAccount = useMemo<AdminAccount | null>(() => {
-    try {
-      const raw = sessionStorage.getItem("iaue_admin_account");
-      return raw ? (JSON.parse(raw) as AdminAccount) : null;
-    } catch {
-      return null;
-    }
-  }, []);
-  const isSuperAdmin = currentAccount?.role === "super_admin";
-  const requesterRole = currentAccount?.role ?? "admin";
+  const currentAccount = useMemo<AdminAccount | null>(() => getCurrentAdmin(), []);
+  const isSuperAdmin = currentAccount?.role === "SUPER_ADMIN";
 
   const [admins, setAdmins] = useState<AdminAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [newRole, setNewRole] = useState<AdminRole>("admin");
+  const [newRole, setNewRole] = useState<AdminRole>("ADMIN");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -45,7 +39,8 @@ const AdminManagementPage = () => {
   const load = () => {
     setLoading(true);
     fetchAdmins()
-      .then(setAdmins)
+      .then((response) => setAdmins(response.admins))
+      .catch((error) => setError(getApiErrorMessage(error, "Unable to load administrators.")))
       .finally(() => setLoading(false));
   };
 
@@ -74,19 +69,18 @@ const AdminManagementPage = () => {
     setSaving(true);
     try {
       const created = await createAdmin({
-        requesterRole,
         fullName,
         email,
         password,
         role: newRole,
       });
       setSuccess(
-        `${created.role === "super_admin" ? "Super Admin" : "Admin"} "${created.fullName}" created successfully.`
+        `${created.role === "SUPER_ADMIN" ? "Super Admin" : "Admin"} "${created.fullName}" created successfully.`
       );
       setFullName("");
       setEmail("");
       setPassword("");
-      setNewRole("admin");
+      setNewRole("ADMIN");
       load();
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
@@ -170,25 +164,25 @@ const AdminManagementPage = () => {
               <div className="min-w-0">
                 <Label className="text-xs">Account Role</Label>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  {newRole === "super_admin"
+                  {newRole === "SUPER_ADMIN"
                     ? "Super Admin — can manage other admin accounts."
                     : "Admin — standard access, no admin management."}
                 </p>
               </div>
               <div className="flex items-center gap-2 whitespace-nowrap">
                 <span
-                  className={`text-[11px] ${newRole === "admin" ? "text-foreground font-medium" : "text-muted-foreground"}`}
+                  className={`text-[11px] ${newRole === "ADMIN" ? "text-foreground font-medium" : "text-muted-foreground"}`}
                 >
                   Admin
                 </span>
                 <Switch
-                  checked={newRole === "super_admin"}
-                  onCheckedChange={(v) => setNewRole(v ? "super_admin" : "admin")}
+                  checked={newRole === "SUPER_ADMIN"}
+                  onCheckedChange={(v) => setNewRole(v ? "SUPER_ADMIN" : "ADMIN")}
                   disabled={!isSuperAdmin || saving}
                   aria-label="Create as Super Admin"
                 />
                 <span
-                  className={`text-[11px] ${newRole === "super_admin" ? "text-foreground font-medium" : "text-muted-foreground"}`}
+                  className={`text-[11px] ${newRole === "SUPER_ADMIN" ? "text-foreground font-medium" : "text-muted-foreground"}`}
                 >
                   Super Admin
                 </span>
@@ -240,12 +234,12 @@ const AdminManagementPage = () => {
                   </div>
                   <span
                     className={`text-[11px] px-2 py-0.5 rounded-full border whitespace-nowrap ${
-                      a.role === "super_admin"
+                      a.role === "SUPER_ADMIN"
                         ? "bg-primary/10 text-foreground border-primary/30"
                         : "bg-muted/40 text-muted-foreground"
                     }`}
                   >
-                    {a.role === "super_admin" ? "Super Admin" : "Admin"}
+                    {a.role === "SUPER_ADMIN" ? "Super Admin" : "Admin"}
                   </span>
                 </li>
               ))}
