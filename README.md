@@ -8,11 +8,11 @@ management.
 ## Local development
 
 1. Start the backend from `../research-validator-api` with its Neon database
-   configuration. It listens on `http://localhost:3000` by default.
-2. In the backend `.env`, either leave `CORS_ORIGIN` unset for local
-   development or set it to `http://localhost:8080`.
-3. Copy `.env.example` to `.env` if you need to override the API URL. Without
-   it, the frontend defaults to `http://localhost:3000`.
+   configuration, or set `VITE_API_PROXY_TARGET` to a deployed API such as
+   `https://your-api.onrender.com`.
+2. Copy `.env.example` to `.env` and set `VITE_API_PROXY_TARGET`. The browser
+   calls the local `/api` path; Vite forwards it to that target, so local
+   development does not depend on the target API's CORS configuration.
 4. Install and start the frontend.
 
    ```bash
@@ -26,4 +26,5 @@ The Vite app runs on `http://localhost:8080`.
 
 Set `VITE_API_BASE_URL` in Vercel to the public Render backend URL, for
 example `https://your-api.onrender.com`. Configure the backend's `CORS_ORIGIN`
-with the Vercel frontend URL before deploying it.
+with the Vercel frontend URL before deploying it; Vite's local proxy is not
+present in a Vercel production build.

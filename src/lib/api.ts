@@ -1,6 +1,6 @@
 import axios, { type AxiosError } from "axios";
 
-const defaultApiBaseUrl = "http://localhost:3000";
+const defaultApiBaseUrl = "/api";
 
 export const apiBaseUrl = (
   import.meta.env.VITE_API_BASE_URL ?? defaultApiBaseUrl
@@ -250,7 +250,10 @@ export function getCurrentAdmin(): AdminAccount | null {
   }
 }
 
-export function setAdminSession(accessToken: string, admin: AdminAccount): void {
+export function setAdminSession(
+  accessToken: string,
+  admin: AdminAccount,
+): void {
   sessionStorage.setItem(accessTokenStorageKey, accessToken);
   sessionStorage.setItem(adminStorageKey, JSON.stringify(admin));
 }
@@ -299,13 +302,14 @@ export async function validateTitle(
 export async function fetchProjectAbstract(
   id: string,
 ): Promise<AbstractResponse> {
-  const response = await api.get<ApiEnvelope<{ projectId: string; abstract: string | null }>>(
-    `/projects/${id}/abstract`,
-  );
+  const response = await api.get<
+    ApiEnvelope<{ projectId: string; abstract: string | null }>
+  >(`/projects/${id}/abstract`);
 
   return {
     ...response.data.data,
-    message: response.data.message ?? "Project abstract retrieved successfully.",
+    message:
+      response.data.message ?? "Project abstract retrieved successfully.",
   };
 }
 
@@ -341,7 +345,10 @@ export async function adminLogout(): Promise<void> {
 export async function createProject(
   payload: CreateProjectPayload,
 ): Promise<Project> {
-  const response = await api.post<ApiEnvelope<Project>>("/admin/projects", payload);
+  const response = await api.post<ApiEnvelope<Project>>(
+    "/admin/projects",
+    payload,
+  );
   return response.data.data;
 }
 
@@ -356,17 +363,21 @@ export async function fetchProjects(
 }
 
 export async function fetchReportSummary(): Promise<ReportSummary> {
-  const [summaryResponse, byYearResponse, byProgrammeResponse, byProgrammeYearResponse] =
-    await Promise.all([
-      api.get<ApiEnvelope<BackendReportSummary>>("/admin/reports/summary"),
-      api.get<ApiEnvelope<BackendYearTotal[]>>("/admin/reports/projects-by-year"),
-      api.get<ApiEnvelope<BackendProgrammeTotal[]>>(
-        "/admin/reports/projects-by-programme",
-      ),
-      api.get<ApiEnvelope<BackendProgrammeYearTotal[]>>(
-        "/admin/reports/projects-by-programme-year",
-      ),
-    ]);
+  const [
+    summaryResponse,
+    byYearResponse,
+    byProgrammeResponse,
+    byProgrammeYearResponse,
+  ] = await Promise.all([
+    api.get<ApiEnvelope<BackendReportSummary>>("/admin/reports/summary"),
+    api.get<ApiEnvelope<BackendYearTotal[]>>("/admin/reports/projects-by-year"),
+    api.get<ApiEnvelope<BackendProgrammeTotal[]>>(
+      "/admin/reports/projects-by-programme",
+    ),
+    api.get<ApiEnvelope<BackendProgrammeYearTotal[]>>(
+      "/admin/reports/projects-by-programme-year",
+    ),
+  ]);
 
   const summary = summaryResponse.data.data;
   const programmeTotals = byProgrammeResponse.data.data;
