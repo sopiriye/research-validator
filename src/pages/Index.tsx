@@ -24,9 +24,11 @@ const LandingPage = () => {
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="max-w-lg w-full text-center space-y-8">
           <div className="space-y-4 fade-in-up">
-            <div className="mx-auto w-14 h-14 rounded-2xl bg-primary flex items-center justify-center">
-              <Search className="h-6 w-6 text-primary-foreground" />
-            </div>
+            <img
+              src="/iaue-crest.png"
+              alt="IAUE crest"
+              className="mx-auto h-24 w-24 object-contain sm:h-28 sm:w-28"
+            />
             <h1 className="text-3xl sm:text-4xl font-bold leading-tight text-foreground">
               Research Project Validator
             </h1>
