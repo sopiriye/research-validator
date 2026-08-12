@@ -201,7 +201,7 @@ const ProjectInformation = () => {
             />
           </Field>
           <div className="sm:col-span-2">
-            <Field label="Project Name" error={errors.projectName}>
+            <Field label="Project Title" error={errors.projectName}>
               <Input
                 value={form.projectName}
                 onChange={(event) => update("projectName", event.target.value)}
@@ -320,7 +320,7 @@ const ProjectInformation = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Project Name</TableHead>
+                  <TableHead>Project Title</TableHead>
                   <TableHead className="hidden md:table-cell">Supervisee</TableHead>
                   <TableHead className="hidden md:table-cell">Supervisor</TableHead>
                   <TableHead className="w-20">Prog.</TableHead>
