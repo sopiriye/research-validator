@@ -99,6 +99,12 @@ export interface CreateAdminPayload {
   role: AdminRole;
 }
 
+export interface UpdateAdminPayload {
+  fullName?: string;
+  email?: string;
+  role?: AdminRole;
+}
+
 export interface AdminQuery {
   page?: number;
   limit?: number;
@@ -440,6 +446,28 @@ export async function createAdmin(
   const response = await api.post<ApiEnvelope<AdminAccount>>(
     "/admin-management/admins",
     payload,
+  );
+  return response.data.data;
+}
+
+export async function updateAdmin(
+  id: string,
+  payload: UpdateAdminPayload,
+): Promise<AdminAccount> {
+  const response = await api.patch<ApiEnvelope<AdminAccount>>(
+    `/admin-management/admins/${id}`,
+    payload,
+  );
+  return response.data.data;
+}
+
+export async function updateAdminStatus(
+  id: string,
+  status: Extract<AdminStatus, "ACTIVE" | "DISABLED">,
+): Promise<AdminAccount> {
+  const response = await api.patch<ApiEnvelope<AdminAccount>>(
+    `/admin-management/admins/${id}/status`,
+    { status },
   );
   return response.data.data;
 }

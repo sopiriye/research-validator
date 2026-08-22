@@ -9,15 +9,37 @@ import {
   KeyRound,
   Loader2,
   ArrowLeft,
+  Pencil,
+  UserX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   fetchAdmins,
   createAdmin,
   resetAdminPassword,
+  updateAdmin,
+  updateAdminStatus,
   getApiErrorMessage,
   getCurrentAdmin,
   type AdminAccount,
@@ -42,10 +64,20 @@ const AdminManagementPage = () => {
   const [resetSaving, setResetSaving] = useState(false);
   const [resetError, setResetError] = useState("");
   const [resetSuccess, setResetSuccess] = useState("");
+  const [editingAdmin, setEditingAdmin] = useState<AdminAccount | null>(null);
+  const [editFullName, setEditFullName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editRole, setEditRole] = useState<AdminRole>("ADMIN");
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [disablingAdmin, setDisablingAdmin] = useState<AdminAccount | null>(null);
+  const [disabling, setDisabling] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const [actionSuccess, setActionSuccess] = useState("");
 
   const load = () => {
     setLoading(true);
-    fetchAdmins()
+    fetchAdmins({ status: "ACTIVE" })
       .then((response) => setAdmins(response.admins))
       .catch((error) => setError(getApiErrorMessage(error, "Unable to load administrators.")))
       .finally(() => setLoading(false));
@@ -94,6 +126,64 @@ const AdminManagementPage = () => {
       setError(err instanceof Error ? err.message : "Failed to create admin.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const openEdit = (admin: AdminAccount) => {
+    setActionError("");
+    setActionSuccess("");
+    setEditError("");
+    setEditingAdmin(admin);
+    setEditFullName(admin.fullName);
+    setEditEmail(admin.email);
+    setEditRole(admin.role);
+  };
+
+  const handleAdminUpdate = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!editingAdmin) return;
+
+    if (!editFullName.trim() || !editEmail.trim()) {
+      setEditError("Enter the administrator's full name and email address.");
+      return;
+    }
+
+    setEditSaving(true);
+    setEditError("");
+    try {
+      const updated = await updateAdmin(editingAdmin.id, {
+        fullName: editFullName.trim(),
+        email: editEmail.trim(),
+        role: editingAdmin.id === currentAccount?.id ? undefined : editRole,
+      });
+      setAdmins((current) => current.map((admin) => (admin.id === updated.id ? updated : admin)));
+      setEditingAdmin(null);
+      setActionSuccess(`Administrator "${updated.fullName}" updated successfully.`);
+      setTimeout(() => setActionSuccess(""), 4000);
+    } catch (error) {
+      setEditError(getApiErrorMessage(error, "Unable to update the administrator."));
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleDisable = async () => {
+    if (!disablingAdmin) return;
+
+    setDisabling(true);
+    setActionError("");
+    setActionSuccess("");
+    try {
+      await updateAdminStatus(disablingAdmin.id, "DISABLED");
+      setAdmins((current) => current.filter((admin) => admin.id !== disablingAdmin.id));
+      if (resetAdminId === disablingAdmin.id) setResetAdminId("");
+      setDisablingAdmin(null);
+      setActionSuccess(`Administrator "${disablingAdmin.fullName}" has been disabled.`);
+      setTimeout(() => setActionSuccess(""), 4000);
+    } catch (error) {
+      setActionError(getApiErrorMessage(error, "Unable to disable the administrator."));
+    } finally {
+      setDisabling(false);
     }
   };
 
@@ -146,6 +236,19 @@ const AdminManagementPage = () => {
           Only the Super Admin can create new admin accounts.
         </p>
       </div>
+
+      {actionError && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2 text-sm">
+          <AlertCircle className="h-4 w-4 mt-0.5 text-destructive" />
+          <span className="text-foreground">{actionError}</span>
+        </div>
+      )}
+      {actionSuccess && (
+        <div className="rounded-md border border-success/30 bg-success/5 p-3 flex items-start gap-2 text-sm">
+          <CheckCircle2 className="h-4 w-4 mt-0.5 text-success" />
+          <span className="text-foreground">{actionSuccess}</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="rounded-lg border bg-card p-5">
@@ -267,15 +370,45 @@ const AdminManagementPage = () => {
                     <p className="text-sm font-medium text-foreground truncate">{a.fullName}</p>
                     <p className="text-xs text-muted-foreground truncate">{a.email}</p>
                   </div>
-                  <span
-                    className={`text-[11px] px-2 py-0.5 rounded-full border whitespace-nowrap ${
-                      a.role === "SUPER_ADMIN"
-                        ? "bg-primary/10 text-foreground border-primary/30"
-                        : "bg-muted/40 text-muted-foreground"
-                    }`}
-                  >
-                    {a.role === "SUPER_ADMIN" ? "Super Admin" : "Admin"}
-                  </span>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <span
+                      className={`text-[11px] px-2 py-0.5 rounded-full border whitespace-nowrap ${
+                        a.role === "SUPER_ADMIN"
+                          ? "bg-primary/10 text-foreground border-primary/30"
+                          : "bg-muted/40 text-muted-foreground"
+                      }`}
+                    >
+                      {a.role === "SUPER_ADMIN" ? "Super Admin" : "Admin"}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      aria-label={`Edit ${a.fullName}`}
+                      title="Edit administrator"
+                      disabled={disabling}
+                      onClick={() => openEdit(a)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      aria-label={`Disable ${a.fullName}`}
+                      title={
+                        a.id === currentAccount?.id
+                          ? "You cannot disable your own account"
+                          : "Disable administrator"
+                      }
+                      disabled={disabling || a.id === currentAccount?.id}
+                      onClick={() => setDisablingAdmin(a)}
+                    >
+                      <UserX className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -353,6 +486,120 @@ const AdminManagementPage = () => {
           </form>
         </div>
       </div>
+
+      <Dialog
+        open={Boolean(editingAdmin)}
+        onOpenChange={(open) => {
+          if (!open && !editSaving) setEditingAdmin(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Administrator</DialogTitle>
+            <DialogDescription>
+              Update the administrator's name, email address, or role.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleAdminUpdate} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-admin-name">Full Name</Label>
+              <Input
+                id="edit-admin-name"
+                value={editFullName}
+                onChange={(event) => setEditFullName(event.target.value)}
+                maxLength={200}
+                disabled={editSaving}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-admin-email">Email</Label>
+              <Input
+                id="edit-admin-email"
+                type="email"
+                value={editEmail}
+                onChange={(event) => setEditEmail(event.target.value)}
+                maxLength={320}
+                disabled={editSaving}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-admin-role">Role</Label>
+              <select
+                id="edit-admin-role"
+                value={editRole}
+                onChange={(event) => setEditRole(event.target.value as AdminRole)}
+                disabled={editSaving || editingAdmin?.id === currentAccount?.id}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="ADMIN">Admin</option>
+                <option value="SUPER_ADMIN">Super Admin</option>
+              </select>
+              {editingAdmin?.id === currentAccount?.id && (
+                <p className="text-xs text-muted-foreground">
+                  Your role cannot be changed from your own account.
+                </p>
+              )}
+            </div>
+
+            {editError && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2.5 flex items-start gap-2 text-sm">
+                <AlertCircle className="h-4 w-4 mt-0.5 text-destructive" />
+                <span className="text-foreground">{editError}</span>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditingAdmin(null)}
+                disabled={editSaving}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={editSaving}>
+                {editSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin-slow" />}
+                {editSaving ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={Boolean(disablingAdmin)}
+        onOpenChange={(open) => {
+          if (!open && !disabling) setDisablingAdmin(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disable administrator?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {disablingAdmin
+                ? `“${disablingAdmin.fullName}” will no longer be able to sign in and will be removed from this active-admin list.`
+                : "This administrator will no longer be able to sign in."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={disabling}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={disabling}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDisable();
+              }}
+            >
+              {disabling && <Loader2 className="mr-2 h-4 w-4 animate-spin-slow" />}
+              {disabling ? "Disabling..." : "Disable Administrator"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
