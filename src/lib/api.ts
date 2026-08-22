@@ -90,6 +90,8 @@ export interface CreateProjectPayload {
   abstract: string;
 }
 
+export type UpdateProjectPayload = Partial<CreateProjectPayload>;
+
 export interface CreateAdminPayload {
   fullName: string;
   email: string;
@@ -360,6 +362,26 @@ export async function fetchProjects(
     { params: query },
   );
   return response.data.data;
+}
+
+export async function fetchProject(id: string): Promise<Project> {
+  const response = await api.get<ApiEnvelope<Project>>(`/admin/projects/${id}`);
+  return response.data.data;
+}
+
+export async function updateProject(
+  id: string,
+  payload: UpdateProjectPayload,
+): Promise<Project> {
+  const response = await api.patch<ApiEnvelope<Project>>(
+    `/admin/projects/${id}`,
+    payload,
+  );
+  return response.data.data;
+}
+
+export async function deleteProject(id: string): Promise<void> {
+  await api.delete(`/admin/projects/${id}`);
 }
 
 export async function fetchReportSummary(): Promise<ReportSummary> {
