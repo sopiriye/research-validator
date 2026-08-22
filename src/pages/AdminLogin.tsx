@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { BookOpen, Loader2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, BookOpen, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,8 +28,20 @@ const AdminLoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-      <div className="max-w-sm w-full space-y-6 fade-in-up">
+    <div className="min-h-screen bg-background">
+      <header className="border-b bg-card">
+        <nav className="container flex h-14 items-center" aria-label="Admin login navigation">
+          <Link to="/">
+            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Home
+            </Button>
+          </Link>
+        </nav>
+      </header>
+
+      <main className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center px-4 py-10">
+        <div className="max-w-sm w-full space-y-6 fade-in-up">
         <div className="text-center space-y-2">
           <div className="mx-auto w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
             <BookOpen className="h-5 w-5 text-primary-foreground" />
@@ -74,7 +86,8 @@ const AdminLoginPage = () => {
         <p className="text-center text-xs text-muted-foreground">
           Use the administrator account assigned to you by the department.
         </p>
-      </div>
+        </div>
+      </main>
     </div>
   );
 };

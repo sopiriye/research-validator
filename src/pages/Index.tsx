@@ -33,7 +33,7 @@ const LandingPage = () => {
               Research Project Validator
             </h1>
             <p className="text-muted-foreground text-base sm:text-lg max-w-md mx-auto leading-relaxed">
-              Ignatius Ajuru University of Education · ITE Postgraduate Department. Verify whether a
+              IGNATIUS AJURU UNIVERSITY OF EDUCATION · ITE Department - Postgraduate School. Verify whether a
               proposed research project title has already been submitted.
             </p>
           </div>
