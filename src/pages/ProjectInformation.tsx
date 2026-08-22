@@ -44,7 +44,7 @@ type FormState = {
   supervisor: string;
   yearOfCompletion: string;
   programme: Programme | "";
-  serialNumber: string;
+  regNumber: string;
   abstract: string;
 };
 
@@ -54,7 +54,7 @@ const empty: FormState = {
   supervisor: "",
   yearOfCompletion: new Date().getFullYear().toString(),
   programme: "",
-  serialNumber: "",
+  regNumber: "",
   abstract: "",
 };
 
@@ -123,7 +123,7 @@ const ProjectInformation = () => {
       nextErrors.yearOfCompletion = "Enter a valid year";
     }
     if (!form.programme) nextErrors.programme = "Select a programme";
-    if (!form.serialNumber.trim()) nextErrors.serialNumber = "Required";
+    if (!form.regNumber.trim()) nextErrors.regNumber = "Required";
     if (!abstractWordCount) nextErrors.abstract = "Enter the project abstract";
     if (abstractWordCount > 300) nextErrors.abstract = "The abstract must not exceed 300 words";
 
@@ -146,7 +146,7 @@ const ProjectInformation = () => {
         supervisor: form.supervisor.trim(),
         yearOfCompletion: Number(form.yearOfCompletion),
         programme: form.programme as Programme,
-        serialNumber: form.serialNumber.trim(),
+        regNumber: form.regNumber.trim(),
         abstract: form.abstract.trim(),
       });
       setSuccess(true);
@@ -235,10 +235,10 @@ const ProjectInformation = () => {
             </Select>
           </Field>
           <div className="sm:col-span-2">
-            <Field label="Serial Number" error={errors.serialNumber}>
+            <Field label="Reg Number" error={errors.regNumber}>
               <Input
-                value={form.serialNumber}
-                onChange={(event) => update("serialNumber", event.target.value)}
+                value={form.regNumber}
+                onChange={(event) => update("regNumber", event.target.value)}
                 placeholder="ITE-MSC-2024-001"
                 maxLength={100}
               />
@@ -303,7 +303,7 @@ const ProjectInformation = () => {
             <Input
               value={search}
               onChange={(event) => handleSearchChange(event.target.value)}
-              placeholder="Search title, supervisee, supervisor, or serial..."
+              placeholder="Search title, supervisee, supervisor, or Reg Number..."
               className="h-10 pl-9"
             />
           </div>
@@ -325,7 +325,7 @@ const ProjectInformation = () => {
                   <TableHead className="hidden md:table-cell">Supervisor</TableHead>
                   <TableHead className="w-20">Prog.</TableHead>
                   <TableHead className="w-16 text-right">Year</TableHead>
-                  <TableHead className="hidden lg:table-cell">Serial</TableHead>
+                  <TableHead className="hidden lg:table-cell">Reg Number</TableHead>
                   <TableHead className="w-12 text-right">Abstract</TableHead>
                 </TableRow>
               </TableHeader>
@@ -351,7 +351,7 @@ const ProjectInformation = () => {
                         {project.yearOfCompletion}
                       </TableCell>
                       <TableCell className="hidden text-xs text-muted-foreground tabular-nums lg:table-cell">
-                        {project.serialNumber}
+                        {project.regNumber}
                       </TableCell>
                       <TableCell className="text-right">
                         <ViewAbstractButton

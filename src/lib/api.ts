@@ -51,7 +51,7 @@ export interface Project {
   supervisor: string;
   yearOfCompletion: number;
   programme: Programme;
-  serialNumber: string;
+  regNumber: string;
   abstract?: string;
   normalizedProjectName?: string;
   createdAt?: string;
@@ -77,7 +77,7 @@ export interface ProjectQuery {
   programme?: Programme;
   yearOfCompletion?: number;
   supervisor?: string;
-  serialNumber?: string;
+  regNumber?: string;
 }
 
 export interface CreateProjectPayload {
@@ -86,7 +86,7 @@ export interface CreateProjectPayload {
   supervisor: string;
   yearOfCompletion: number;
   programme: Programme;
-  serialNumber: string;
+  regNumber: string;
   abstract: string;
 }
 
