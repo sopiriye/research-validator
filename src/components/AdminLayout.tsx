@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { GraduationCap, LayoutDashboard, FolderKanban, BarChart3, LogOut } from "lucide-react";
+import { GraduationCap, LayoutDashboard, FolderKanban, BarChart3, KeyRound, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   adminLogout,
@@ -59,6 +59,8 @@ const AdminLayout = () => {
 
   if (!ready) return null;
 
+  const currentAdmin = getCurrentAdmin();
+
   const navItems = [
     { to: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard", exact: true },
     { to: "/admin/dashboard/projects", icon: FolderKanban, label: "Project Information" },
@@ -79,6 +81,14 @@ const AdminLayout = () => {
                 Home
               </Button>
             </Link>
+            {currentAdmin?.role === "SUPER_ADMIN" && (
+              <Link to="/admin/dashboard/management#reset-password">
+                <Button variant="ghost" size="sm" className="text-muted-foreground text-xs">
+                  <KeyRound className="h-3.5 w-3.5 mr-1" />
+                  Reset Password
+                </Button>
+              </Link>
+            )}
             <Button variant="ghost" size="sm" onClick={() => void handleLogout()} className="text-muted-foreground text-xs">
               <LogOut className="h-3.5 w-3.5 mr-1" />
               Logout

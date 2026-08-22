@@ -421,3 +421,12 @@ export async function createAdmin(
   );
   return response.data.data;
 }
+
+export async function resetAdminPassword(
+  adminId: string,
+  newPassword: string,
+): Promise<void> {
+  await api.patch(`/admin-management/admins/${adminId}/reset-password`, {
+    newPassword,
+  });
+}
