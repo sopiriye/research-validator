@@ -34,7 +34,8 @@ const LandingPage = () => {
             </h1>
             <p className="text-muted-foreground text-base sm:text-lg max-w-md mx-auto leading-relaxed">
               <span className="block whitespace-nowrap">IGNATIUS AJURU UNIVERSITY OF EDUCATION</span>
-              <span className="block whitespace-nowrap">ITE Department - Postgraduate School </span>
+              <span className="block whitespace-nowrap">The Postgraduate School</span>
+              <span className="block whitespace-nowrap">Faculty of Vocational and Technical Education </span>
             </p>
           </div>
 
