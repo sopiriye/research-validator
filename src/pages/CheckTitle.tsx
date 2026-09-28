@@ -10,6 +10,10 @@ import {
   type ValidationResponse,
 } from "@/lib/api";
 import { AbstractDialog, ViewAbstractButton } from "@/components/AbstractDialog";
+import {
+  ResearchObjectivesDialog,
+  ViewResearchObjectivesButton,
+} from "@/components/ResearchObjectivesDialog";
 
 const CheckTitlePage = () => {
   const [title, setTitle] = useState("");
@@ -18,10 +22,17 @@ const CheckTitlePage = () => {
   const [error, setError] = useState("");
   const [abstractProject, setAbstractProject] = useState<ProjectMatch | null>(null);
   const [abstractOpen, setAbstractOpen] = useState(false);
+  const [researchObjectivesProject, setResearchObjectivesProject] = useState<ProjectMatch | null>(null);
+  const [researchObjectivesOpen, setResearchObjectivesOpen] = useState(false);
 
   const openAbstract = (project: ProjectMatch) => {
     setAbstractProject(project);
     setAbstractOpen(true);
+  };
+
+  const openResearchObjectives = (project: ProjectMatch) => {
+    setResearchObjectivesProject(project);
+    setResearchObjectivesOpen(true);
   };
 
   const handleCheck = async () => {
@@ -88,11 +99,22 @@ const CheckTitlePage = () => {
             </p>
           )}
 
-          {result && <ResultBlock result={result} onViewAbstract={openAbstract} />}
+          {result && (
+            <ResultBlock
+              result={result}
+              onViewAbstract={openAbstract}
+              onViewResearchObjectives={openResearchObjectives}
+            />
+          )}
         </div>
       </main>
 
       <AbstractDialog project={abstractProject} open={abstractOpen} onOpenChange={setAbstractOpen} />
+      <ResearchObjectivesDialog
+        project={researchObjectivesProject}
+        open={researchObjectivesOpen}
+        onOpenChange={setResearchObjectivesOpen}
+      />
     </div>
   );
 };
@@ -100,9 +122,11 @@ const CheckTitlePage = () => {
 function ResultBlock({
   result,
   onViewAbstract,
+  onViewResearchObjectives,
 }: {
   result: ValidationResponse;
   onViewAbstract: (project: ProjectMatch) => void;
+  onViewResearchObjectives: (project: ProjectMatch) => void;
 }) {
   if (result.status === "DUPLICATE_FOUND") {
     return (
@@ -115,7 +139,13 @@ function ResultBlock({
         />
         <div className="space-y-2">
           {result.exactMatches.map((m, i) => (
-            <MatchCard key={i} match={m} tone="destructive" onViewAbstract={onViewAbstract} />
+            <MatchCard
+              key={i}
+              match={m}
+              tone="destructive"
+              onViewAbstract={onViewAbstract}
+              onViewResearchObjectives={onViewResearchObjectives}
+            />
           ))}
         </div>
       </div>
@@ -133,7 +163,13 @@ function ResultBlock({
         />
         <div className="space-y-2">
           {result.similarMatches.map((m, i) => (
-            <MatchCard key={i} match={m} tone="warning" onViewAbstract={onViewAbstract} />
+            <MatchCard
+              key={i}
+              match={m}
+              tone="warning"
+              onViewAbstract={onViewAbstract}
+              onViewResearchObjectives={onViewResearchObjectives}
+            />
           ))}
         </div>
       </div>
@@ -189,10 +225,12 @@ function MatchCard({
   match,
   tone,
   onViewAbstract,
+  onViewResearchObjectives,
 }: {
   match: ProjectMatch;
   tone: Tone;
   onViewAbstract: (project: ProjectMatch) => void;
+  onViewResearchObjectives: (project: ProjectMatch) => void;
 }) {
   const c = toneClasses[tone];
   return (
@@ -205,6 +243,26 @@ function MatchCard({
         <span>
           Programme: <span className="text-foreground font-medium">{match.programme}</span>
         </span>
+        {match.department && (
+          <span>
+            Department: <span className="text-foreground font-medium">{match.department}</span>
+          </span>
+        )}
+        {match.supervisee && (
+          <span>
+            Supervisee: <span className="text-foreground font-medium">{match.supervisee}</span>
+          </span>
+        )}
+        {match.supervisor && (
+          <span>
+            Supervisor: <span className="text-foreground font-medium">{match.supervisor}</span>
+          </span>
+        )}
+        {match.regNumber && (
+          <span>
+            Reg Number: <span className="text-foreground font-medium">{match.regNumber}</span>
+          </span>
+        )}
       </div>
       {match.deterministicScore !== undefined && (
         <p className="mt-2 text-xs text-muted-foreground">
@@ -212,11 +270,12 @@ function MatchCard({
           {match.classification ? ` · ${match.classification.replaceAll("_", " ")}` : ""}
         </p>
       )}
-      {match.hasAbstract && (
-        <div className="mt-3">
+      <div className="mt-3 flex flex-wrap gap-2">
+        {match.hasAbstract && (
           <ViewAbstractButton onClick={() => onViewAbstract(match)} />
-        </div>
-      )}
+        )}
+        <ViewResearchObjectivesButton onClick={() => onViewResearchObjectives(match)} />
+      </div>
     </div>
   );
 }

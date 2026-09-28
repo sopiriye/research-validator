@@ -11,6 +11,7 @@ import AdminDashboard from "./pages/AdminDashboard.tsx";
 import ProjectInformation from "./pages/ProjectInformation.tsx";
 import ProjectReports from "./pages/ProjectReports.tsx";
 import AdminManagementPage from "./pages/AdminManagement.tsx";
+import ChangePasswordPage from "./pages/ChangePassword.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="projects" element={<ProjectInformation />} />
             <Route path="reports" element={<ProjectReports />} />
             <Route path="management" element={<AdminManagementPage />} />
+            <Route path="change-password" element={<ChangePasswordPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

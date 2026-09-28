@@ -81,6 +81,12 @@ const AdminLayout = () => {
                 Home
               </Button>
             </Link>
+            <Link to="/admin/dashboard/change-password">
+              <Button variant="ghost" size="sm" className="text-muted-foreground text-xs">
+                <KeyRound className="h-3.5 w-3.5 mr-1" />
+                Change Password
+              </Button>
+            </Link>
             {currentAdmin?.role === "SUPER_ADMIN" && (
               <Link to="/admin/dashboard/management#reset-password">
                 <Button variant="ghost" size="sm" className="text-muted-foreground text-xs">

@@ -13,6 +13,32 @@ export const authExpiredEvent = "iaue-auth-expired";
 export type Programme = "MSc" | "PGD" | "PhD";
 export type AdminRole = "ADMIN" | "SUPER_ADMIN";
 export type AdminStatus = "ACTIVE" | "DISABLED" | "SUSPENDED";
+export type AcademicDepartment =
+  | "AGRICULTURAL_EDUCATION"
+  | "BUILDING_WOODWORK_TECHNOLOGY_EDUCATION"
+  | "ELECTRICAL_ELECTRONIC_TECHNOLOGY_EDUCATION"
+  | "MECHANICAL_AUTOMOBILE_TECHNOLOGY_EDUCATION"
+  | "HOME_ECONOMICS_HOSPITALITY_AND_TOURISM";
+
+export const academicDepartmentOptions: { value: AcademicDepartment; label: string }[] = [
+  { value: "AGRICULTURAL_EDUCATION", label: "Agricultural Education" },
+  {
+    value: "BUILDING_WOODWORK_TECHNOLOGY_EDUCATION",
+    label: "Building/Woodwork Technology Education",
+  },
+  {
+    value: "ELECTRICAL_ELECTRONIC_TECHNOLOGY_EDUCATION",
+    label: "Electrical/Electronic Technology Education",
+  },
+  {
+    value: "MECHANICAL_AUTOMOBILE_TECHNOLOGY_EDUCATION",
+    label: "Mechanical/Automobile Technology Education",
+  },
+  {
+    value: "HOME_ECONOMICS_HOSPITALITY_AND_TOURISM",
+    label: "Home Economics Hospitality and Tourism",
+  },
+];
 
 export interface AdminAccount {
   id: string;
@@ -31,10 +57,15 @@ export interface ProjectReference {
   yearOfCompletion: number;
   programme: Programme;
   hasAbstract?: boolean;
+  hasResearchObjectives?: boolean;
 }
 
 export interface ProjectMatch extends ProjectReference {
   matchType: "EXACT" | "SIMILAR";
+  department?: string;
+  supervisee?: string;
+  supervisor?: string;
+  regNumber?: string;
   algorithmScores?: {
     levenshtein: number;
     trigram: number;
@@ -51,8 +82,10 @@ export interface Project {
   supervisor: string;
   yearOfCompletion: number;
   programme: Programme;
+  department: string;
   regNumber: string;
   abstract?: string;
+  researchObjectives?: string;
   normalizedProjectName?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -75,6 +108,7 @@ export interface ProjectQuery {
   limit?: number;
   search?: string;
   programme?: Programme;
+  department?: AcademicDepartment;
   yearOfCompletion?: number;
   supervisor?: string;
   regNumber?: string;
@@ -86,8 +120,10 @@ export interface CreateProjectPayload {
   supervisor: string;
   yearOfCompletion: number;
   programme: Programme;
+  department: AcademicDepartment;
   regNumber: string;
   abstract: string;
+  researchObjectives: string;
 }
 
 export type UpdateProjectPayload = Partial<CreateProjectPayload>;
@@ -135,6 +171,12 @@ export interface ValidationResponse {
 export interface AbstractResponse {
   projectId: string;
   abstract: string | null;
+  message: string;
+}
+
+export interface ResearchObjectivesResponse {
+  projectId: string;
+  researchObjectives: string | null;
   message: string;
 }
 
@@ -279,7 +321,15 @@ export function toProjectReference(project: Project): ProjectReference {
     yearOfCompletion: project.yearOfCompletion,
     programme: project.programme,
     hasAbstract: true,
+    hasResearchObjectives: Boolean(project.researchObjectives?.trim()),
   };
+}
+
+export function toAcademicDepartmentCode(value: string): AcademicDepartment | "" {
+  const option = academicDepartmentOptions.find(
+    (item) => item.value === value || item.label === value,
+  );
+  return option?.value ?? "";
 }
 
 export function getApiErrorMessage(
@@ -321,6 +371,20 @@ export async function fetchProjectAbstract(
   };
 }
 
+export async function fetchProjectResearchObjectives(
+  id: string,
+): Promise<ResearchObjectivesResponse> {
+  const response = await api.get<
+    ApiEnvelope<{ projectId: string; researchObjectives: string | null }>
+  >(`/projects/${id}/research-objectives`);
+
+  return {
+    ...response.data.data,
+    message:
+      response.data.message ?? "Project research objectives retrieved successfully.",
+  };
+}
+
 export async function adminLogin(
   email: string,
   password: string,
@@ -348,6 +412,16 @@ export async function adminLogout(): Promise<void> {
   } finally {
     clearAdminSession();
   }
+}
+
+export async function changeOwnPassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  await api.patch("/auth-admin/change-password", {
+    currentPassword,
+    newPassword,
+  });
 }
 
 export async function createProject(

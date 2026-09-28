@@ -15,6 +15,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AbstractDialog, ViewAbstractButton } from "@/components/AbstractDialog";
 import {
+  ResearchObjectivesDialog,
+  ViewResearchObjectivesButton,
+} from "@/components/ResearchObjectivesDialog";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -49,13 +53,16 @@ import {
 } from "@/components/ui/table";
 import {
   createProject,
+  academicDepartmentOptions,
   deleteProject,
   fetchProject,
   fetchProjects,
   getApiErrorMessage,
   toProjectReference,
+  toAcademicDepartmentCode,
   updateProject,
   type Pagination,
+  type AcademicDepartment,
   type Programme,
   type Project,
   type ProjectReference,
@@ -67,8 +74,10 @@ type FormState = {
   supervisor: string;
   yearOfCompletion: string;
   programme: Programme | "";
+  department: AcademicDepartment | "";
   regNumber: string;
   abstract: string;
+  researchObjectives: string;
 };
 
 const empty: FormState = {
@@ -77,8 +86,10 @@ const empty: FormState = {
   supervisor: "",
   yearOfCompletion: new Date().getFullYear().toString(),
   programme: "",
+  department: "",
   regNumber: "",
   abstract: "",
+  researchObjectives: "",
 };
 
 const pageSize = 20;
@@ -99,6 +110,8 @@ const ProjectInformation = () => {
   const [listSuccess, setListSuccess] = useState("");
   const [abstractProject, setAbstractProject] = useState<ProjectReference | null>(null);
   const [abstractOpen, setAbstractOpen] = useState(false);
+  const [researchObjectivesProject, setResearchObjectivesProject] = useState<ProjectReference | null>(null);
+  const [researchObjectivesOpen, setResearchObjectivesOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [editForm, setEditForm] = useState<FormState>(empty);
   const [editErrors, setEditErrors] = useState<Partial<Record<keyof FormState, string>>>({});
@@ -143,7 +156,9 @@ const ProjectInformation = () => {
   };
 
   const abstractWordCount = countWords(form.abstract);
+  const researchObjectivesWordCount = countWords(form.researchObjectives);
   const editAbstractWordCount = countWords(editForm.abstract);
+  const editResearchObjectivesWordCount = countWords(editForm.researchObjectives);
 
   const validate = () => {
     const nextErrors = getFormErrors(form);
@@ -167,15 +182,7 @@ const ProjectInformation = () => {
     setSubmitError("");
 
     try {
-      await createProject({
-        supervisee: form.supervisee.trim(),
-        projectName: form.projectName.trim(),
-        supervisor: form.supervisor.trim(),
-        yearOfCompletion: Number(form.yearOfCompletion),
-        programme: form.programme as Programme,
-        regNumber: form.regNumber.trim(),
-        abstract: form.abstract.trim(),
-      });
+      await createProject(toProjectPayload(form));
       setSuccess(true);
       setForm({ ...empty, yearOfCompletion: form.yearOfCompletion });
       setPage(1);
@@ -196,6 +203,11 @@ const ProjectInformation = () => {
   const openAbstract = (project: Project) => {
     setAbstractProject(toProjectReference(project));
     setAbstractOpen(true);
+  };
+
+  const openResearchObjectives = (project: Project) => {
+    setResearchObjectivesProject(toProjectReference(project));
+    setResearchObjectivesOpen(true);
   };
 
   const openEdit = async (project: Project) => {
@@ -321,6 +333,23 @@ const ProjectInformation = () => {
               </SelectContent>
             </Select>
           </Field>
+          <Field label="Department" error={errors.department}>
+            <Select
+              value={form.department || undefined}
+              onValueChange={(value) => update("department", value as AcademicDepartment)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select department" />
+              </SelectTrigger>
+              <SelectContent>
+                {academicDepartmentOptions.map((department) => (
+                  <SelectItem key={department.value} value={department.value}>
+                    {department.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
           <div className="sm:col-span-2">
             <Field label="Reg Number" error={errors.regNumber}>
               <Input
@@ -341,8 +370,22 @@ const ProjectInformation = () => {
                 className="resize-y"
               />
               <p className="text-xs text-muted-foreground">
-                {abstractWordCount}/300 words. The abstract is available to public users and admins through
+                {abstractWordCount}/500 words. The abstract is available to public users and admins through
                 the abstract viewer.
+              </p>
+            </Field>
+          </div>
+          <div className="sm:col-span-2">
+            <Field label="Research Objectives" error={errors.researchObjectives}>
+              <Textarea
+                value={form.researchObjectives}
+                onChange={(event) => update("researchObjectives", event.target.value)}
+                placeholder="Enter the project's research objectives..."
+                rows={5}
+                className="resize-y"
+              />
+              <p className="text-xs text-muted-foreground">
+                {researchObjectivesWordCount}/300 words. Research objectives are available through the objectives viewer.
               </p>
             </Field>
           </div>
@@ -417,16 +460,18 @@ const ProjectInformation = () => {
                   <TableHead className="hidden md:table-cell">Supervisee</TableHead>
                   <TableHead className="hidden md:table-cell">Supervisor</TableHead>
                   <TableHead className="w-20">Prog.</TableHead>
+                  <TableHead className="hidden lg:table-cell">Department</TableHead>
                   <TableHead className="w-16 text-right">Year</TableHead>
                   <TableHead className="hidden lg:table-cell">Reg Number</TableHead>
                   <TableHead className="w-12 text-right">Abstract</TableHead>
+                  <TableHead className="w-12 text-right">Objectives</TableHead>
                   <TableHead className="w-20 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {projects.length === 0 && !loadingList ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={10} className="py-8 text-center text-sm text-muted-foreground">
                       No records found.
                     </TableCell>
                   </TableRow>
@@ -441,6 +486,9 @@ const ProjectInformation = () => {
                         {project.supervisor}
                       </TableCell>
                       <TableCell className="text-sm">{project.programme}</TableCell>
+                      <TableCell className="hidden text-xs text-muted-foreground lg:table-cell">
+                        {project.department}
+                      </TableCell>
                       <TableCell className="text-right text-sm tabular-nums">
                         {project.yearOfCompletion}
                       </TableCell>
@@ -452,6 +500,13 @@ const ProjectInformation = () => {
                           compact
                           label="View abstract"
                           onClick={() => openAbstract(project)}
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <ViewResearchObjectivesButton
+                          compact
+                          label="View research objectives"
+                          onClick={() => openResearchObjectives(project)}
                         />
                       </TableCell>
                       <TableCell className="text-right">
@@ -594,6 +649,24 @@ const ProjectInformation = () => {
                 </SelectContent>
               </Select>
             </Field>
+            <Field label="Department" error={editErrors.department}>
+              <Select
+                value={editForm.department || undefined}
+                onValueChange={(value) => updateEditForm("department", value as AcademicDepartment)}
+                disabled={editSaving}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {academicDepartmentOptions.map((department) => (
+                    <SelectItem key={department.value} value={department.value}>
+                      {department.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
             <div className="sm:col-span-2">
               <Field label="Reg Number" error={editErrors.regNumber}>
                 <Input
@@ -613,7 +686,21 @@ const ProjectInformation = () => {
                   className="resize-y"
                   disabled={editSaving}
                 />
-                <p className="text-xs text-muted-foreground">{editAbstractWordCount}/300 words.</p>
+                <p className="text-xs text-muted-foreground">{editAbstractWordCount}/500 words.</p>
+              </Field>
+            </div>
+            <div className="sm:col-span-2">
+              <Field label="Research Objectives" error={editErrors.researchObjectives}>
+                <Textarea
+                  value={editForm.researchObjectives}
+                  onChange={(event) => updateEditForm("researchObjectives", event.target.value)}
+                  rows={5}
+                  className="resize-y"
+                  disabled={editSaving}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {editResearchObjectivesWordCount}/300 words.
+                </p>
               </Field>
             </div>
 
@@ -674,6 +761,11 @@ const ProjectInformation = () => {
       </AlertDialog>
 
       <AbstractDialog project={abstractProject} open={abstractOpen} onOpenChange={setAbstractOpen} />
+      <ResearchObjectivesDialog
+        project={researchObjectivesProject}
+        open={researchObjectivesOpen}
+        onOpenChange={setResearchObjectivesOpen}
+      />
     </div>
   );
 };
@@ -703,8 +795,10 @@ function toFormState(project: Project): FormState {
     supervisor: project.supervisor,
     yearOfCompletion: project.yearOfCompletion.toString(),
     programme: project.programme,
+    department: toAcademicDepartmentCode(project.department),
     regNumber: project.regNumber,
     abstract: project.abstract ?? "",
+    researchObjectives: project.researchObjectives ?? "",
   };
 }
 
@@ -715,8 +809,10 @@ function toProjectPayload(form: FormState) {
     supervisor: form.supervisor.trim(),
     yearOfCompletion: Number(form.yearOfCompletion),
     programme: form.programme as Programme,
+    department: form.department as AcademicDepartment,
     regNumber: form.regNumber.trim(),
     abstract: form.abstract.trim(),
+    researchObjectives: form.researchObjectives.trim(),
   };
 }
 
@@ -731,11 +827,18 @@ function getFormErrors(form: FormState): Partial<Record<keyof FormState, string>
     nextErrors.yearOfCompletion = "Enter a valid year";
   }
   if (!form.programme) nextErrors.programme = "Select a programme";
+  if (!form.department) nextErrors.department = "Select a department";
   if (!form.regNumber.trim()) nextErrors.regNumber = "Required";
 
   const abstractWordCount = countWords(form.abstract);
   if (!abstractWordCount) nextErrors.abstract = "Enter the project abstract";
-  if (abstractWordCount > 300) nextErrors.abstract = "The abstract must not exceed 300 words";
+  if (abstractWordCount > 500) nextErrors.abstract = "The abstract must not exceed 500 words";
+
+  const researchObjectivesWordCount = countWords(form.researchObjectives);
+  if (!researchObjectivesWordCount) nextErrors.researchObjectives = "Enter the research objectives";
+  if (researchObjectivesWordCount > 300) {
+    nextErrors.researchObjectives = "Research objectives must not exceed 300 words";
+  }
 
   return nextErrors;
 }
