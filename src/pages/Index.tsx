@@ -10,7 +10,7 @@ const LandingPage = () => {
           <div className="flex items-center gap-2 min-w-0">
             <GraduationCap className="h-5 w-5 text-foreground shrink-0" />
             <span className="font-semibold text-foreground text-sm sm:text-base truncate">
-              IAUE-ITE-PG · Research Project Validator
+              VOTECH · Research Project Validator
             </span>
           </div>
           <Link to="/admin/login">

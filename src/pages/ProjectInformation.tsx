@@ -55,6 +55,7 @@ import {
   createProject,
   academicDepartmentOptions,
   deleteProject,
+  fetchAcademicDepartments,
   fetchProject,
   fetchProjects,
   getApiErrorMessage,
@@ -63,6 +64,7 @@ import {
   updateProject,
   type Pagination,
   type AcademicDepartment,
+  type AcademicDepartmentOption,
   type Programme,
   type Project,
   type ProjectReference,
@@ -96,6 +98,9 @@ const pageSize = 20;
 
 const ProjectInformation = () => {
   const [form, setForm] = useState<FormState>(empty);
+  const [academicDepartments, setAcademicDepartments] = useState<
+    AcademicDepartmentOption[]
+  >(academicDepartmentOptions);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -149,6 +154,24 @@ const ProjectInformation = () => {
     );
     return () => window.clearTimeout(timeout);
   }, [load, page, search]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    void fetchAcademicDepartments()
+      .then((departments) => {
+        if (isActive && departments.length > 0) {
+          setAcademicDepartments(departments);
+        }
+      })
+      .catch(() => {
+        // Retain the contract-aligned local list if the reference request fails.
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -342,7 +365,7 @@ const ProjectInformation = () => {
                 <SelectValue placeholder="Select department" />
               </SelectTrigger>
               <SelectContent>
-                {academicDepartmentOptions.map((department) => (
+                {academicDepartments.map((department) => (
                   <SelectItem key={department.value} value={department.value}>
                     {department.label}
                   </SelectItem>
@@ -659,7 +682,7 @@ const ProjectInformation = () => {
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
-                  {academicDepartmentOptions.map((department) => (
+                  {academicDepartments.map((department) => (
                     <SelectItem key={department.value} value={department.value}>
                       {department.label}
                     </SelectItem>

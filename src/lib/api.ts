@@ -20,7 +20,12 @@ export type AcademicDepartment =
   | "MECHANICAL_AUTOMOBILE_TECHNOLOGY_EDUCATION"
   | "HOME_ECONOMICS_HOSPITALITY_AND_TOURISM";
 
-export const academicDepartmentOptions: { value: AcademicDepartment; label: string }[] = [
+export interface AcademicDepartmentOption {
+  value: AcademicDepartment;
+  label: string;
+}
+
+export const academicDepartmentOptions: AcademicDepartmentOption[] = [
   { value: "AGRICULTURAL_EDUCATION", label: "Agricultural Education" },
   {
     value: "BUILDING_WOODWORK_TECHNOLOGY_EDUCATION",
@@ -330,6 +335,17 @@ export function toAcademicDepartmentCode(value: string): AcademicDepartment | ""
     (item) => item.value === value || item.label === value,
   );
   return option?.value ?? "";
+}
+
+export async function fetchAcademicDepartments(): Promise<AcademicDepartmentOption[]> {
+  const response = await api.get<
+    ApiEnvelope<{ code: AcademicDepartment; label: string }[]>
+  >("/admin/academic-departments");
+
+  return response.data.data.map((department) => ({
+    value: department.code,
+    label: department.label,
+  }));
 }
 
 export function getApiErrorMessage(
