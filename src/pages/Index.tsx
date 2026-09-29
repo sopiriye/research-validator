@@ -56,7 +56,7 @@ const LandingPage = () => {
       </main>
 
       <footer className="border-t py-4 text-center text-xs sm:text-sm text-muted-foreground">
-        IAUE — ITE Department · Postgraduate Project Registry
+        IAUE — VOTECH · Postgraduate Project Registry
       </footer>
     </div>
   );

@@ -378,7 +378,7 @@ const ProjectInformation = () => {
               <Input
                 value={form.regNumber}
                 onChange={(event) => update("regNumber", event.target.value)}
-                placeholder="ITE-MSC-2024-001"
+                placeholder="(Department)-MSC-2024-001"
                 maxLength={100}
               />
             </Field>
