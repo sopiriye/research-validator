@@ -36,6 +36,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   fetchAdmins,
+  fetchAcademicDepartments,
+  academicDepartmentOptions,
   createAdmin,
   resetAdminPassword,
   updateAdmin,
@@ -43,6 +45,8 @@ import {
   getApiErrorMessage,
   getCurrentAdmin,
   type AdminAccount,
+  type AcademicDepartment,
+  type AcademicDepartmentOption,
   type AdminRole,
 } from "@/lib/api";
 
@@ -54,6 +58,10 @@ const AdminManagementPage = () => {
   const [loading, setLoading] = useState(true);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [department, setDepartment] = useState<AcademicDepartment | "">("");
+  const [academicDepartments, setAcademicDepartments] = useState<
+    AcademicDepartmentOption[]
+  >(academicDepartmentOptions);
   const [password, setPassword] = useState("");
   const [newRole, setNewRole] = useState<AdminRole>("ADMIN");
   const [saving, setSaving] = useState(false);
@@ -67,6 +75,7 @@ const AdminManagementPage = () => {
   const [editingAdmin, setEditingAdmin] = useState<AdminAccount | null>(null);
   const [editFullName, setEditFullName] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editDepartment, setEditDepartment] = useState<AcademicDepartment | "">("");
   const [editRole, setEditRole] = useState<AdminRole>("ADMIN");
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState("");
@@ -87,6 +96,24 @@ const AdminManagementPage = () => {
     load();
   }, []);
 
+  useEffect(() => {
+    let isActive = true;
+
+    void fetchAcademicDepartments()
+      .then((departments) => {
+        if (isActive && departments.length > 0) {
+          setAcademicDepartments(departments);
+        }
+      })
+      .catch(() => {
+        // Keep the contract-aligned local list available if the request fails.
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
   if (!isSuperAdmin) {
     return <Navigate to="/admin/dashboard" replace />;
   }
@@ -100,14 +127,15 @@ const AdminManagementPage = () => {
       setError("You are not allowed to create another admin. Only the Super Admin can add new admins.");
       return;
     }
-    if (!fullName.trim() || !email.trim() || password.length < 6) {
-      setError("Enter a name, valid email, and password (min 6 characters).");
+    if (!fullName.trim() || !email.trim() || !department || password.length < 6) {
+      setError("Enter a department, name, valid email, and password (min 6 characters).");
       return;
     }
 
     setSaving(true);
     try {
       const created = await createAdmin({
+        department,
         fullName,
         email,
         password,
@@ -118,6 +146,7 @@ const AdminManagementPage = () => {
       );
       setFullName("");
       setEmail("");
+      setDepartment("");
       setPassword("");
       setNewRole("ADMIN");
       load();
@@ -136,6 +165,7 @@ const AdminManagementPage = () => {
     setEditingAdmin(admin);
     setEditFullName(admin.fullName);
     setEditEmail(admin.email);
+    setEditDepartment("");
     setEditRole(admin.role);
   };
 
@@ -152,6 +182,7 @@ const AdminManagementPage = () => {
     setEditError("");
     try {
       const updated = await updateAdmin(editingAdmin.id, {
+        department: editDepartment || undefined,
         fullName: editFullName.trim(),
         email: editEmail.trim(),
         role: editingAdmin.id === currentAccount?.id ? undefined : editRole,
@@ -286,6 +317,26 @@ const AdminManagementPage = () => {
                 placeholder="jane@iaue.edu.ng"
                 disabled={!isSuperAdmin || saving}
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="new-admin-department">Department</Label>
+              <select
+                id="new-admin-department"
+                value={department}
+                onChange={(event) =>
+                  setDepartment(event.target.value as AcademicDepartment)
+                }
+                disabled={!isSuperAdmin || saving}
+                required
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="">Select department</option>
+                {academicDepartments.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="space-y-1.5">
               <Label>Temporary Password</Label>
@@ -497,7 +548,7 @@ const AdminManagementPage = () => {
           <DialogHeader>
             <DialogTitle>Edit Administrator</DialogTitle>
             <DialogDescription>
-              Update the administrator's name, email address, or role.
+              Update the administrator's name, email address, department, or role.
             </DialogDescription>
           </DialogHeader>
 
@@ -524,6 +575,28 @@ const AdminManagementPage = () => {
                 disabled={editSaving}
                 required
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-admin-department">Department</Label>
+              <select
+                id="edit-admin-department"
+                value={editDepartment}
+                onChange={(event) =>
+                  setEditDepartment(event.target.value as AcademicDepartment)
+                }
+                disabled={editSaving}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="">Keep current department</option>
+                {academicDepartments.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Select a department only when changing the administrator's current department.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="edit-admin-role">Role</Label>

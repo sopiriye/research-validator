@@ -51,6 +51,7 @@ export interface AdminAccount {
   email: string;
   role: AdminRole;
   status?: AdminStatus;
+  departmentId?: string;
   createdAt?: string;
   updatedAt?: string;
   lastLoginAt?: string | null;
@@ -134,6 +135,7 @@ export interface CreateProjectPayload {
 export type UpdateProjectPayload = Partial<CreateProjectPayload>;
 
 export interface CreateAdminPayload {
+  department: AcademicDepartment;
   fullName: string;
   email: string;
   password: string;
@@ -141,6 +143,7 @@ export interface CreateAdminPayload {
 }
 
 export interface UpdateAdminPayload {
+  department?: AcademicDepartment;
   fullName?: string;
   email?: string;
   role?: AdminRole;
