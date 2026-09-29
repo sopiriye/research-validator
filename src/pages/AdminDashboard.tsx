@@ -34,7 +34,7 @@ const AdminDashboard = () => {
           Welcome, {currentAccount?.fullName ?? "Admin"}
         </h1>
         <p className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
-          <span>Overview of the IAUE-ITE-PG project database.</span>
+          <span>Overview of the VOTECH project database.</span>
           {currentAccount && (
             <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium text-foreground bg-muted/40">
               <ShieldCheck className="h-3 w-3" />

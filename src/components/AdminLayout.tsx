@@ -73,7 +73,7 @@ const AdminLayout = () => {
         <div className="container flex h-14 items-center justify-between">
           <div className="flex items-center gap-2">
             <GraduationCap className="h-5 w-5 text-foreground" />
-            <span className="font-semibold text-foreground text-sm sm:text-base">IAUE-ITE-PG · Admin</span>
+            <span className="font-semibold text-foreground text-sm sm:text-base">VOTECH · Admin</span>
           </div>
           <div className="flex items-center gap-1">
             <Link to="/">
