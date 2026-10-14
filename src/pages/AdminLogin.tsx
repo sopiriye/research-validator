@@ -47,7 +47,7 @@ const AdminLoginPage = () => {
             <BookOpen className="h-5 w-5 text-primary-foreground" />
           </div>
           <h1 className="text-xl font-bold text-foreground">Admin Login</h1>
-          <p className="text-sm text-muted-foreground">IAUE-ITE Department Portal</p>
+          <p className="text-sm text-muted-foreground">IAUE - VOTECH Faculty Portal</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
