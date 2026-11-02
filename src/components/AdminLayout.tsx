@@ -9,6 +9,7 @@ import {
   LogOut,
   House,
   Menu,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -81,6 +82,9 @@ const AdminLayout = () => {
     { to: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard", exact: true },
     { to: "/admin/dashboard/projects", icon: FolderKanban, label: "Project Information" },
     { to: "/admin/dashboard/reports", icon: BarChart3, label: "Project Reports" },
+    ...(currentAdmin?.role === "SUPER_ADMIN"
+      ? [{ to: "/admin/dashboard/platform-documents", icon: FileText, label: "Platform Documents" }]
+      : []),
   ];
 
   return (

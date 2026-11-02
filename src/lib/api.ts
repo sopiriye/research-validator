@@ -149,6 +149,42 @@ export interface UpdateAdminPayload {
   role?: AdminRole;
 }
 
+export type PlatformDocumentType = "PROJECT_FORMAT";
+export type PlatformDocumentStatus = "ACTIVE" | "ARCHIVED";
+
+export interface PlatformDocument {
+  id: string;
+  documentType: PlatformDocumentType;
+  version: string;
+  title: string;
+  content: string;
+  status: PlatformDocumentStatus;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PublishedPlatformDocument {
+  documentType: PlatformDocumentType;
+  version: string;
+  title: string;
+  content: string;
+  publishedAt: string | null;
+  updatedAt: string;
+}
+
+export interface CreatePlatformDocumentPayload {
+  documentType: PlatformDocumentType;
+  version: string;
+  title: string;
+  content: string;
+  status?: PlatformDocumentStatus;
+}
+
+export type UpdatePlatformDocumentPayload = Partial<
+  Omit<CreatePlatformDocumentPayload, "documentType">
+>;
+
 export interface AdminQuery {
   page?: number;
   limit?: number;
@@ -531,6 +567,56 @@ export async function fetchAdmins(
     { params: query },
   );
   return response.data.data;
+}
+
+export async function fetchPublishedPlatformDocument(
+  documentType: PlatformDocumentType,
+): Promise<PublishedPlatformDocument> {
+  const response = await api.get<ApiEnvelope<PublishedPlatformDocument>>(
+    `/platform-documents/${documentType}`,
+  );
+  return response.data.data;
+}
+
+export async function fetchPlatformDocuments(): Promise<PlatformDocument[]> {
+  const response = await api.get<ApiEnvelope<PlatformDocument[]>>(
+    "/admin/platform-documents",
+  );
+  return response.data.data;
+}
+
+export async function fetchPlatformDocument(
+  id: string,
+): Promise<PlatformDocument> {
+  const response = await api.get<ApiEnvelope<PlatformDocument>>(
+    `/admin/platform-documents/${id}`,
+  );
+  return response.data.data;
+}
+
+export async function createPlatformDocument(
+  payload: CreatePlatformDocumentPayload,
+): Promise<PlatformDocument> {
+  const response = await api.post<ApiEnvelope<PlatformDocument>>(
+    "/admin/platform-documents",
+    payload,
+  );
+  return response.data.data;
+}
+
+export async function updatePlatformDocument(
+  id: string,
+  payload: UpdatePlatformDocumentPayload,
+): Promise<PlatformDocument> {
+  const response = await api.patch<ApiEnvelope<PlatformDocument>>(
+    `/admin/platform-documents/${id}`,
+    payload,
+  );
+  return response.data.data;
+}
+
+export async function deletePlatformDocument(id: string): Promise<void> {
+  await api.delete(`/admin/platform-documents/${id}`);
 }
 
 export async function createAdmin(

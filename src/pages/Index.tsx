@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Search, ShieldCheck, BookOpen, GraduationCap } from "lucide-react";
+import { Search, ShieldCheck, BookOpen, GraduationCap, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const LandingPage = () => {
@@ -39,10 +39,16 @@ const LandingPage = () => {
             </p>
           </div>
 
-          <div className="fade-in-up fade-in-up-delay-1">
+          <div className="flex flex-wrap justify-center gap-3 fade-in-up fade-in-up-delay-1">
             <Link to="/check">
               <Button size="lg" className="px-8 h-12 text-base active:scale-[0.97] transition-transform">
                 Check Project Title
+              </Button>
+            </Link>
+            <Link to="/documents/project-format">
+              <Button size="lg" variant="outline" className="h-12 px-6 text-base active:scale-[0.97] transition-transform">
+                <FileText className="mr-2 h-4 w-4" />
+                View Project Format
               </Button>
             </Link>
           </div>

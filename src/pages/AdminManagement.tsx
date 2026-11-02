@@ -9,6 +9,7 @@ import {
   KeyRound,
   Loader2,
   ArrowLeft,
+  FileText,
   Pencil,
   UserX,
 } from "lucide-react";
@@ -280,6 +281,24 @@ const AdminManagementPage = () => {
           <span className="text-foreground">{actionSuccess}</span>
         </div>
       )}
+
+      <Link
+        to="/admin/dashboard/platform-documents"
+        className="group flex items-center justify-between gap-4 rounded-lg border bg-card p-4 transition-colors hover:border-foreground/20"
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          <FileText className="h-5 w-5 shrink-0 text-foreground" />
+          <div>
+            <p className="text-sm font-medium text-foreground">Platform Documents</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Create, publish, update, delete, and review document versions.
+            </p>
+          </div>
+        </div>
+        <span className="text-xs text-muted-foreground transition-transform group-hover:translate-x-0.5">
+          Manage →
+        </span>
+      </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="rounded-lg border bg-card p-5">

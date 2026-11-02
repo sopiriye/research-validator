@@ -12,6 +12,8 @@ import ProjectInformation from "./pages/ProjectInformation.tsx";
 import ProjectReports from "./pages/ProjectReports.tsx";
 import AdminManagementPage from "./pages/AdminManagement.tsx";
 import ChangePasswordPage from "./pages/ChangePassword.tsx";
+import ProjectFormatPage from "./pages/ProjectFormat.tsx";
+import PlatformDocumentsPage from "./pages/PlatformDocuments.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -25,12 +27,14 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/check" element={<CheckTitle />} />
+          <Route path="/documents/project-format" element={<ProjectFormatPage />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
             <Route path="projects" element={<ProjectInformation />} />
             <Route path="reports" element={<ProjectReports />} />
             <Route path="management" element={<AdminManagementPage />} />
+            <Route path="platform-documents" element={<PlatformDocumentsPage />} />
             <Route path="change-password" element={<ChangePasswordPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />
